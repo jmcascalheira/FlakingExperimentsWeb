@@ -1,0 +1,16 @@
+{
+  "name": "Flaking Experiments",
+  "short_name": "Flaking Exp",
+  "description": "Data collection for randomized flaking experiments",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#007aff",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23007aff'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='white'>🪨</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

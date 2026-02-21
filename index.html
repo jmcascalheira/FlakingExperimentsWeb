@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Flaking Exp">
+<link rel="manifest" href="manifest.json">
+<title>Flaking Experiments</title>
+<style>
+  :root {
+    --bg: #f2f2f7;
+    --card: #ffffff;
+    --accent: #007aff;
+    --green: #34c759;
+    --orange: #ff9500;
+    --red: #ff3b30;
+    --gray: #8e8e93;
+    --lightgray: #e5e5ea;
+    --text: #1c1c1e;
+    --secondary: #6c6c70;
+    --border: #c6c6c8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tab-btn {
+    flex-shrink: 0;
+    padding: 10px 16px;
+    border: none;
+    background: none;
+    font-size: 14px;
+    color: var(--secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+  }
+  .tab-btn:hover { background: rgba(0,0,0,0.03); }
+
+  /* Content area */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    padding-bottom: 80px;
+    max-width: 700px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* Sections */
+  .section {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .section-header {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+
+  /* Form elements */
+  .form-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--lightgray);
+  }
+  .form-row:last-child { border-bottom: none; }
+  .form-row label {
+    flex: 1;
+    font-size: 15px;
+  }
+  .form-row input[type="text"],
+  .form-row input[type="number"],
+  .form-row input[type="date"] {
+    width: 160px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    text-align: right;
+    background: var(--bg);
+  }
+  textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 80px;
+    background: var(--bg);
+  }
+  select {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    background: var(--bg);
+    max-width: 200px;
+  }
+
+  /* Buttons */
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn:active { opacity: 0.7; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-green { background: var(--green); color: white; }
+  .btn-bordered {
+    background: white;
+    color: var(--accent);
+    border: 1.5px solid var(--accent);
+  }
+  .btn-red-outline {
+    background: white;
+    color: var(--red);
+    border: 1px solid rgba(255,59,48,0.4);
+    font-size: 14px;
+    padding: 10px 16px;
+    width: auto;
+  }
+  .btn-sm {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  /* Segmented control */
+  .segmented {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .segmented button {
+    flex: 1;
+    padding: 8px 6px;
+    border: none;
+    background: var(--bg);
+    font-size: 13px;
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .segmented button:last-child { border-right: none; }
+  .segmented button.active {
+    background: var(--accent);
+    color: white;
+    font-weight: 600;
+  }
+
+  /* Stepper */
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .stepper button {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stepper button:active { background: var(--lightgray); }
+  .stepper span { font-size: 16px; min-width: 24px; text-align: center; }
+
+  /* Toggle */
+  .toggle {
+    position: relative;
+    width: 51px;
+    height: 31px;
+    flex-shrink: 0;
+  }
+  .toggle input { display: none; }
+  .toggle .slider {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--lightgray);
+    border-radius: 31px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  .toggle .slider:before {
+    content: '';
+    position: absolute;
+    height: 27px; width: 27px;
+    left: 2px; bottom: 2px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .toggle input:checked + .slider { background: var(--green); }
+  .toggle input:checked + .slider:before { transform: translateX(20px); }
+
+  /* Platform grid */
+  .platform-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 10px;
+    padding: 8px 0;
+  }
+  .platform-square {
+    width: 72px;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1.5px solid var(--border);
+    transition: all 0.15s;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .plat-available { background: rgba(0,0,0,0.06); color: var(--text); }
+  .plat-selected { background: rgba(0,122,255,0.2); border-color: var(--accent); }
+  .plat-new { background: rgba(52,199,89,0.25); border-color: var(--green); color: var(--text); }
+  .plat-flake { background: rgba(255,149,0,0.25); border-color: var(--orange); color: var(--secondary); }
+  .plat-fragment { background: rgba(255,59,48,0.25); border-color: var(--red); color: var(--secondary); }
+
+  /* Summary panel */
+  .summary-panel {
+    background: rgba(0,0,0,0.04);
+    border-radius: 10px;
+    padding: 12px 16px;
+  }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    font-size: 14px;
+  }
+  .summary-row .val { font-weight: 600; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--secondary);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 0.5px solid rgba(0,0,0,0.15);
+  }
+
+  /* Table */
+  .data-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .data-table {
+    border-collapse: collapse;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .data-table th, .data-table td {
+    padding: 6px 8px;
+    border: 1px solid var(--lightgray);
+    text-align: center;
+  }
+  .data-table th {
+    background: rgba(0,0,0,0.06);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+  }
+  .data-table .unviable { color: var(--red); }
+  .data-table .notes-col { min-width: 100px; text-align: left; }
+
+  /* Helper text */
+  .helper { font-size: 13px; color: var(--secondary); }
+  .helper-sm { font-size: 12px; color: var(--secondary); }
+  .text-center { text-align: center; }
+  .mb-8 { margin-bottom: 8px; }
+  .mb-12 { margin-bottom: 12px; }
+  .mb-16 { margin-bottom: 16px; }
+  .mt-8 { margin-top: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .gap-12 { display: flex; flex-direction: column; gap: 12px; }
+
+  /* Auto-save indicator */
+  .autosave-indicator {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    background: var(--green);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    z-index: 200;
+    pointer-events: none;
+  }
+  .autosave-indicator.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Modal overlay */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 24px;
+    max-width: 340px;
+    width: 90%;
+    text-align: center;
+  }
+  .modal h3 { margin-bottom: 8px; }
+  .modal p { font-size: 14px; color: var(--secondary); margin-bottom: 16px; }
+  .modal .btn { margin-top: 8px; }
+
+  /* Hide tab panels */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  @media (max-width: 400px) {
+    .tab-btn { padding: 10px 10px; font-size: 12px; }
+    .platform-square { width: 60px; height: 60px; font-size: 20px; }
+    .form-row input[type="text"],
+    .form-row input[type="number"],
+    .form-row input[type="date"] { width: 120px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Tab Bar -->
+<div class="tab-bar" id="tabBar">
+  <button class="tab-btn active" data-tab="trialDetails">Experiment Details</button>
+  <button class="tab-btn" data-tab="platformSetup">Platform Setup</button>
+  <button class="tab-btn" data-tab="randomPlatform">Random Platform</button>
+  <button class="tab-btn" data-tab="platformChanges">Platform Changes</button>
+  <button class="tab-btn" data-tab="postStrike">Post-Strike</button>
+  <button class="tab-btn" data-tab="endTrial" id="endTrialTab" style="display:none">End Experiment</button>
+</div>
+
+<!-- ===== TAB 1: Experiment Details ===== -->
+<div class="content tab-panel active" id="panel-trialDetails">
+  <div class="section">
+    <div class="section-header">Experiment Information</div>
+    <div class="form-row">
+      <label>Experiment Number</label>
+      <input type="text" id="trialNumber" placeholder="e.g. 1">
+    </div>
+    <div class="form-row">
+      <label>Date</label>
+      <input type="date" id="trialDate">
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-header">Clast Information</div>
+    <div class="form-row">
+      <label>Clast Number ID</label>
+      <input type="text" id="clastNumberID" placeholder="">
+    </div>
+    <div class="form-row">
+      <label>Clast Source ID</label>
+      <input type="text" id="clastSourceID" placeholder="">
+    </div>
+    <div class="form-row">
+      <label>Clast Weight (g)</label>
+      <input type="number" id="clastWeight" step="0.01" placeholder="0">
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-header">Notes</div>
+    <textarea id="clastNotes" placeholder="Clast notes..."></textarea>
+  </div>
+
+  <!-- Auto-save folder (File System Access API — Chrome/Edge only) -->
+  <div class="section" id="folderPickerSection" style="display:none">
+    <div class="section-header">Auto-Save Folder</div>
+    <div class="helper-sm mb-12">Choose a folder and the CSV will be saved automatically after every strike — no manual export needed.</div>
+    <div id="folderStatus" class="mb-12">
+      <span class="helper">No folder selected (data will save to browser storage only)</span>
+    </div>
+    <button class="btn btn-bordered btn-sm" onclick="pickSaveFolder()">
+      📂 Choose Save Folder
+    </button>
+  </div>
+
+  <button class="btn btn-primary" onclick="startTrial()">
+    ▼ Start Experiment
+  </button>
+</div>
+
+<!-- ===== TAB 2: Platform Setup ===== -->
+<div class="content tab-panel" id="panel-platformSetup">
+  <div class="section">
+    <div id="platformSetupHeader" class="section-header">Set the initial number of platforms</div>
+    <div style="display:flex; justify-content:center; gap:20px; margin-bottom:16px;">
+      <button class="platform-square plat-available" style="width:56px;height:56px;font-size:28px;" onclick="removePlatform()">−</button>
+      <button class="platform-square plat-available" style="width:56px;height:56px;font-size:28px;" onclick="addPlatform()">+</button>
+    </div>
+    <div class="platform-grid" id="setupGrid"></div>
+  </div>
+  <button class="btn btn-primary" onclick="goToTab('randomPlatform')">
+    Go to Random Platform →
+  </button>
+</div>
+
+<!-- ===== TAB 3: Random Platform ===== -->
+<div class="content tab-panel" id="panel-randomPlatform">
+  <div class="section text-center">
+    <div class="section-header">Generate a Random Platform</div>
+    <button class="btn btn-green mb-16" onclick="generateRandomPlatform()">
+      🎲 Generate Random Platform
+    </button>
+    <div id="selectedPlatformDisplay" class="mb-16">
+      <span class="helper">No platform selected.</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Platform Attributes</div>
+
+    <div class="mb-12">
+      <div class="helper-sm mb-8">Platform Quality</div>
+      <div class="segmented" id="qualityPicker">
+        <button onclick="setQuality('')">-</button>
+        <button onclick="setQuality('1')">1</button>
+        <button onclick="setQuality('2')">2</button>
+        <button onclick="setQuality('3')">3</button>
+        <button onclick="setQuality('4')">4</button>
+        <button onclick="setQuality('5')">5</button>
+      </div>
+    </div>
+
+    <div class="mb-12">
+      <div class="helper-sm mb-8">Platform Location</div>
+      <select id="locationPicker" onchange="state.platformLocation=this.value">
+        <option value="">Select...</option>
+        <option value="Position 1">Pos 1 – proximal end to 30%</option>
+        <option value="Position 2">Pos 2 – 30% to 80%</option>
+        <option value="Position 3">Pos 3 – distal end, beyond 80%</option>
+        <option value="Position 4">Pos 4 – cortical surfaces</option>
+        <option value="Position 5">Pos 5 – flaw cortex surface</option>
+        <option value="Position 6">Pos 6 – fracture surface</option>
+        <option value="Position 7">Pos 7 – unclassifiable</option>
+      </select>
+    </div>
+
+    <div class="mb-12">
+      <div class="helper-sm mb-8">Platform Type</div>
+      <select id="typePicker" onchange="state.platformType=this.value">
+        <option value="">Select...</option>
+        <option value="Cortical">Cortical</option>
+        <option value="Flaw Cortex">Flaw Cortex</option>
+        <option value="Fracture Surface">Fracture Surface</option>
+        <option value="Plain">Plain</option>
+        <option value="Dihedral">Dihedral</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Unviable button -->
+  <div id="unviableSection" style="display:none" class="text-center mb-16">
+    <div class="helper-sm mb-8">If unable to remove a flake after multiple attempts:</div>
+    <button class="btn btn-red-outline" onclick="markUnviable()">
+      ✕ Mark Unviable & Re-select
+    </button>
+  </div>
+
+  <button class="btn btn-primary" id="goToPlatformChangesBtn" disabled onclick="goToTab('platformChanges')">
+    Go to Record Platform Changes →
+  </button>
+</div>
+
+<!-- ===== TAB 4: Platform Changes ===== -->
+<div class="content tab-panel" id="panel-platformChanges">
+  <div class="section">
+    <div class="section-header">Record platform changes from this strike</div>
+    <div class="helper-sm mb-12 text-center">Tap a platform to cycle: Available → Removed by Flake → Removed by Fragment</div>
+
+    <div class="summary-panel mb-12" id="changeSummary"></div>
+    <div class="platform-grid" id="changesGrid"></div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
+      <span class="helper-sm">Add platforms created by this blow:</span>
+      <button class="platform-square plat-new" style="width:40px;height:40px;font-size:22px;border-color:var(--green);" onclick="addPlatformThisBlow()">+</button>
+    </div>
+
+    <div class="legend mt-8">
+      <div class="legend-item"><div class="legend-swatch" style="background:rgba(0,0,0,0.06)"></div>Available</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:rgba(52,199,89,0.25)"></div>New</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:rgba(255,149,0,0.25)"></div>Flake</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:rgba(255,59,48,0.25)"></div>Fragment</div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="goToTab('postStrike')">
+    Continue to Post-Strike Data →
+  </button>
+</div>
+
+<!-- ===== TAB 5: Post-Strike Data ===== -->
+<div class="content tab-panel" id="panel-postStrike">
+  <div class="section">
+    <div class="section-header">Hammerstone</div>
+    <div class="form-row">
+      <label>Hammerstone ID</label>
+      <input type="text" id="hammerstoneID" placeholder="">
+    </div>
+    <div class="mb-8">
+      <div class="helper-sm mb-8">Hammerstone Failure</div>
+      <div class="segmented" id="hammerFailPicker">
+        <button class="active" onclick="setHammerFail('None')">None</button>
+        <button onclick="setHammerFail('Chipping')">Chipping</button>
+        <button onclick="setHammerFail('Failure')">Failure</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Blow Success</div>
+    <div class="helper-sm mb-8">0 = failure, 1 = much smaller, 3 = met prediction, 5 = exceeded</div>
+    <div class="segmented" id="blowSuccessPicker">
+      <button onclick="setBlowSuccess(0)">0</button>
+      <button onclick="setBlowSuccess(1)">1</button>
+      <button onclick="setBlowSuccess(2)">2</button>
+      <button class="active" onclick="setBlowSuccess(3)">3</button>
+      <button onclick="setBlowSuccess(4)">4</button>
+      <button onclick="setBlowSuccess(5)">5</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Platform Type Counts</div>
+    <div class="form-row">
+      <label>Unifacial Simple</label>
+      <div class="stepper">
+        <button onclick="stepValue('unifacialSimple',-1)">−</button>
+        <span id="unifacialSimple">0</span>
+        <button onclick="stepValue('unifacialSimple',1)">+</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Unifacial Abrupt</label>
+      <div class="stepper">
+        <button onclick="stepValue('unifacialAbrupt',-1)">−</button>
+        <span id="unifacialAbrupt">0</span>
+        <button onclick="stepValue('unifacialAbrupt',1)">+</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Bifacial Simple</label>
+      <div class="stepper">
+        <button onclick="stepValue('bifacialSimple',-1)">−</button>
+        <span id="bifacialSimple">0</span>
+        <button onclick="stepValue('bifacialSimple',1)">+</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Bifacial Abrupt</label>
+      <div class="stepper">
+        <button onclick="stepValue('bifacialAbrupt',-1)">−</button>
+        <span id="bifacialAbrupt">0</span>
+        <button onclick="stepValue('bifacialAbrupt',1)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Core Measurements</div>
+    <div class="form-row">
+      <label>Core Weight (g)</label>
+      <input type="number" id="postCoreWeight" step="0.01" placeholder="0">
+    </div>
+    <div class="form-row">
+      <label>Core Fragmentation</label>
+      <label class="toggle">
+        <input type="checkbox" id="coreFragToggle" onchange="toggleFragmentation()">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div id="fragFields" style="display:none">
+      <div class="form-row">
+        <label>Fragment Number</label>
+        <div class="stepper">
+          <button onclick="stepValue('fragmentNumber',-1)">−</button>
+          <span id="fragmentNumber">0</span>
+          <button onclick="stepValue('fragmentNumber',1)">+</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Fragment Weight (g)</label>
+        <input type="number" id="fragmentWeight" step="0.01" placeholder="0">
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Notes</div>
+    <textarea id="strikeNotes" placeholder="Strike notes..."></textarea>
+  </div>
+
+  <div class="gap-12">
+    <button class="btn btn-primary" onclick="recordAndContinue()">
+      ↻ Record & Next Strike
+    </button>
+    <button class="btn btn-bordered" onclick="recordAndEndTrial()">
+      🏁 Record & End Experiment
+    </button>
+  </div>
+</div>
+
+<!-- ===== TAB 6: End of Experiment ===== -->
+<div class="content tab-panel" id="panel-endTrial">
+  <div class="section">
+    <div class="section-header">Final Measurements</div>
+    <div class="form-row">
+      <label>Final Core Weight (g)</label>
+      <input type="number" id="finalCoreWeight" step="0.01" placeholder="0">
+    </div>
+    <div class="form-row">
+      <label>Debris Weight (g)</label>
+      <input type="number" id="debrisWeight" step="0.01" placeholder="0">
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Overall Stone Quality Assessment</div>
+    <div class="helper-sm mb-8">1 = low, 3 = average, 5 = high</div>
+    <div class="segmented" id="stoneQualityPicker">
+      <button onclick="setStoneQuality(1)">1</button>
+      <button onclick="setStoneQuality(2)">2</button>
+      <button class="active" onclick="setStoneQuality(3)">3</button>
+      <button onclick="setStoneQuality(4)">4</button>
+      <button onclick="setStoneQuality(5)">5</button>
+    </div>
+  </div>
+
+  <div class="section" id="endTrialTableSection" style="display:none">
+    <div class="section-header" id="endTrialTableHeader">Strike Records</div>
+    <div class="data-table-wrapper" id="endTrialTable"></div>
+  </div>
+
+  <button class="btn btn-green" onclick="downloadCSV()">
+    💾 Save CSV to Downloads
+  </button>
+</div>
+
+<!-- Auto-save indicator -->
+<div class="autosave-indicator" id="autosaveIndicator">✓ Auto-saved</div>
+
+<!-- Scan reminder modal -->
+<div class="modal-overlay" id="scanModal">
+  <div class="modal">
+    <h3>3D Scan Reminder</h3>
+    <p id="scanModalText"></p>
+    <button class="btn btn-primary" onclick="closeScanModal()">OK</button>
+  </div>
+</div>
+
+<script>
+// ==================== STATE ====================
+const state = {
+  // Experiment details
+  trialNumber: '',
+  trialDate: new Date().toISOString().split('T')[0],
+  clastNumberID: '',
+  clastSourceID: '',
+  clastWeight: null,
+  clastNotes: '',
+
+  // End of experiment
+  finalCoreWeight: null,
+  debrisWeight: null,
+  stoneQualityRating: 3,
+
+  // Platforms: array of { id, status }  status: 'A', 'AX', 'AF'
+  platforms: [{ id: 1, status: 'A' }],
+  nextPlatformId: 2,
+  removedPlatformIds: new Set(),
+
+  // Current strike
+  selectedPlatform: null,
+  platformQuality: '',
+  platformLocation: '',
+  platformType: '',
+  newPlatformsPendingAdd: [],
+
+  // Post-strike data
+  hammerstoneID: '',
+  hammerstoneFailure: 'None',
+  blowSuccess: 3,
+  unifacialSimple: 0,
+  unifacialAbrupt: 0,
+  bifacialSimple: 0,
+  bifacialAbrupt: 0,
+  postCoreWeight: null,
+  coreFragmentation: false,
+  fragmentNumber: 0,
+  fragmentWeight: null,
+  strikeNotes: '',
+
+  // Records
+  strikeRecords: [],
+  strikeCount: 0,
+  isTrialComplete: false,
+  currentTab: 'trialDetails'
+};
+
+// ==================== TAB NAVIGATION ====================
+function goToTab(tabId) {
+  state.currentTab = tabId;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+  document.getElementById(`panel-${tabId}`).classList.add('active');
+
+  // Refresh views
+  if (tabId === 'platformSetup') renderPlatformSetup();
+  if (tabId === 'randomPlatform') renderRandomPlatform();
+  if (tabId === 'platformChanges') renderPlatformChanges();
+  if (tabId === 'endTrial') renderEndTrial();
+
+  // Scroll to top
+  document.querySelector('.tab-panel.active').scrollTop = 0;
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => goToTab(btn.dataset.tab));
+});
+
+// ==================== TAB 1: Experiment Details ====================
+function startTrial() {
+  state.trialNumber = document.getElementById('trialNumber').value;
+  state.trialDate = document.getElementById('trialDate').value;
+  state.clastNumberID = document.getElementById('clastNumberID').value;
+  state.clastSourceID = document.getElementById('clastSourceID').value;
+  state.clastWeight = parseFloat(document.getElementById('clastWeight').value) || null;
+  state.clastNotes = document.getElementById('clastNotes').value;
+  goToTab('platformSetup');
+}
+
+// Initialize date field
+document.getElementById('trialDate').value = state.trialDate;
+
+// ==================== TAB 2: Platform Setup ====================
+function addPlatform(createdThisBlow) {
+  state.platforms.push({ id: state.nextPlatformId, status: 'A' });
+  if (createdThisBlow) {
+    state.newPlatformsPendingAdd.push(state.nextPlatformId);
+  }
+  state.nextPlatformId++;
+  renderPlatformSetup();
+}
+
+function removePlatform() {
+  if (state.platforms.length > 1) {
+    const removed = state.platforms.pop();
+    state.newPlatformsPendingAdd = state.newPlatformsPendingAdd.filter(id => id !== removed.id);
+    renderPlatformSetup();
+  }
+}
+
+function renderPlatformSetup() {
+  const grid = document.getElementById('setupGrid');
+  const header = document.getElementById('platformSetupHeader');
+  const available = state.platforms.filter(p => p.status === 'A');
+
+  if (state.strikeRecords.length === 0) {
+    header.textContent = 'Set the initial number of platforms';
+  } else {
+    header.textContent = `Review platforms and add new ones (Available: ${available.length})`;
+  }
+
+  grid.innerHTML = available.map(p =>
+    `<div class="platform-square plat-available">${p.id}</div>`
+  ).join('');
+}
+
+// ==================== TAB 3: Random Platform ====================
+function generateRandomPlatform() {
+  const available = state.platforms.filter(p => p.status === 'A' && !state.newPlatformsPendingAdd.includes(p.id));
+  if (available.length > 0) {
+    const pick = available[Math.floor(Math.random() * available.length)];
+    state.selectedPlatform = pick.id;
+    renderRandomPlatform();
+  }
+}
+
+function setQuality(val) {
+  state.platformQuality = val;
+  document.querySelectorAll('#qualityPicker button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function renderRandomPlatform() {
+  const display = document.getElementById('selectedPlatformDisplay');
+  const btn = document.getElementById('goToPlatformChangesBtn');
+  const unviable = document.getElementById('unviableSection');
+
+  if (state.selectedPlatform !== null) {
+    display.innerHTML = `<div class="platform-square plat-selected" style="width:88px;height:88px;font-size:32px;margin:0 auto;">${state.selectedPlatform}</div>`;
+    btn.disabled = false;
+    unviable.style.display = 'block';
+  } else {
+    display.innerHTML = `<span class="helper">No platform selected.</span>`;
+    btn.disabled = true;
+    unviable.style.display = 'none';
+  }
+
+  // Reset pickers
+  document.getElementById('locationPicker').value = state.platformLocation;
+  document.getElementById('typePicker').value = state.platformType;
+}
+
+function markUnviable() {
+  if (state.selectedPlatform === null) return;
+  const id = state.selectedPlatform;
+
+  // Record unviable row
+  state.strikeRecords.push({
+    strikeNumber: state.strikeCount + 1,
+    isUnviable: true,
+    randomPlatform: id,
+    platformQuality: '',
+    platformLocation: '',
+    platformType: '',
+    platformsPreBlow: 0,
+    platformsCreated: 0,
+    platformsRemovedFlake: 0,
+    platformsRemovedFragment: 0,
+    platformStatuses: {},
+    postStrikeData: defaultPostStrike()
+  });
+
+  // Remove platform
+  state.removedPlatformIds.add(id);
+  state.platforms = state.platforms.filter(p => p.id !== id);
+  state.selectedPlatform = null;
+  state.platformQuality = '';
+  state.platformLocation = '';
+  state.platformType = '';
+
+  // Reset quality picker
+  document.querySelectorAll('#qualityPicker button').forEach((b, i) => b.classList.toggle('active', i === 0));
+  document.getElementById('locationPicker').value = '';
+  document.getElementById('typePicker').value = '';
+
+  autoSave();
+  renderRandomPlatform();
+}
+
+// ==================== TAB 4: Platform Changes ====================
+function addPlatformThisBlow() {
+  addPlatform(true);
+  renderPlatformChanges();
+}
+
+function cyclePlatformStatus(id) {
+  if (state.newPlatformsPendingAdd.includes(id)) return;
+  const p = state.platforms.find(p => p.id === id);
+  if (!p) return;
+  if (p.status === 'A') p.status = 'AX';
+  else if (p.status === 'AX') p.status = 'AF';
+  else p.status = 'A';
+  renderPlatformChanges();
+}
+
+function renderPlatformChanges() {
+  const grid = document.getElementById('changesGrid');
+  const summary = document.getElementById('changeSummary');
+
+  const preBlow = state.platforms.length - state.newPlatformsPendingAdd.length;
+  const created = state.newPlatformsPendingAdd.length;
+  const rmFlake = state.platforms.filter(p => p.status === 'AX').length;
+  const rmFrag = state.platforms.filter(p => p.status === 'AF').length;
+
+  summary.innerHTML = `
+    <div class="summary-row"><span>Platforms before blow:</span><span class="val">${preBlow}</span></div>
+    <div class="summary-row"><span>Newly created:</span><span class="val" style="color:var(--green)">${created}</span></div>
+    <div class="summary-row"><span>Removed by flake:</span><span class="val" style="color:var(--orange)">${rmFlake}</span></div>
+    <div class="summary-row"><span>Removed by fragment:</span><span class="val" style="color:var(--red)">${rmFrag}</span></div>
+  `;
+
+  grid.innerHTML = state.platforms.map(p => {
+    const isNew = state.newPlatformsPendingAdd.includes(p.id);
+    let cls = 'plat-available';
+    if (isNew) cls = 'plat-new';
+    else if (p.status === 'AX') cls = 'plat-flake';
+    else if (p.status === 'AF') cls = 'plat-fragment';
+    return `<div class="platform-square ${cls}" onclick="cyclePlatformStatus(${p.id})">${p.id}</div>`;
+  }).join('');
+}
+
+// ==================== TAB 5: Post-Strike Data ====================
+function setHammerFail(val) {
+  state.hammerstoneFailure = val;
+  document.querySelectorAll('#hammerFailPicker button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function setBlowSuccess(val) {
+  state.blowSuccess = val;
+  document.querySelectorAll('#blowSuccessPicker button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function stepValue(field, delta) {
+  const el = document.getElementById(field);
+  let val = parseInt(el.textContent) + delta;
+  if (val < 0) val = 0;
+  el.textContent = val;
+  state[field] = val;
+}
+
+function toggleFragmentation() {
+  state.coreFragmentation = document.getElementById('coreFragToggle').checked;
+  document.getElementById('fragFields').style.display = state.coreFragmentation ? 'block' : 'none';
+}
+
+function defaultPostStrike() {
+  return {
+    hammerstoneID: '',
+    hammerstoneFailure: 'None',
+    blowSuccess: 3,
+    unifacialSimpleCount: 0,
+    unifacialAbruptCount: 0,
+    bifacialSimpleCount: 0,
+    bifacialAbruptCount: 0,
+    coreWeight: null,
+    coreFragmentation: false,
+    fragmentNumber: 0,
+    fragmentWeight: null,
+    strikeNotes: ''
+  };
+}
+
+function collectPostStrikeData() {
+  return {
+    hammerstoneID: document.getElementById('hammerstoneID').value,
+    hammerstoneFailure: state.hammerstoneFailure,
+    blowSuccess: state.blowSuccess,
+    unifacialSimpleCount: state.unifacialSimple,
+    unifacialAbruptCount: state.unifacialAbrupt,
+    bifacialSimpleCount: state.bifacialSimple,
+    bifacialAbruptCount: state.bifacialAbrupt,
+    coreWeight: parseFloat(document.getElementById('postCoreWeight').value) || null,
+    coreFragmentation: state.coreFragmentation,
+    fragmentNumber: state.fragmentNumber,
+    fragmentWeight: parseFloat(document.getElementById('fragmentWeight')?.value) || null,
+    strikeNotes: document.getElementById('strikeNotes').value
+  };
+}
+
+function recordStrike() {
+  state.strikeCount++;
+
+  // Build platform status map
+  const statusMap = {};
+  for (const id of state.removedPlatformIds) {
+    statusMap[id] = 'B';
+  }
+  for (const p of state.platforms) {
+    if (!state.newPlatformsPendingAdd.includes(p.id)) {
+      statusMap[p.id] = p.status;
+    }
+  }
+
+  const preBlow = state.platforms.length - state.newPlatformsPendingAdd.length;
+  const created = state.newPlatformsPendingAdd.length;
+  const rmFlake = state.platforms.filter(p => p.status === 'AX').length;
+  const rmFrag = state.platforms.filter(p => p.status === 'AF').length;
+
+  const record = {
+    strikeNumber: state.strikeCount,
+    isUnviable: false,
+    randomPlatform: state.selectedPlatform || 0,
+    platformQuality: state.platformQuality,
+    platformLocation: state.platformLocation,
+    platformType: state.platformType,
+    platformsPreBlow: preBlow,
+    platformsCreated: created,
+    platformsRemovedFlake: rmFlake,
+    platformsRemovedFragment: rmFrag,
+    platformStatuses: { ...statusMap },
+    postStrikeData: collectPostStrikeData()
+  };
+
+  state.strikeRecords.push(record);
+
+  // Track removed platforms
+  state.platforms.filter(p => p.status === 'AX' || p.status === 'AF').forEach(p => {
+    state.removedPlatformIds.add(p.id);
+  });
+  state.platforms = state.platforms.filter(p => p.status !== 'AX' && p.status !== 'AF');
+
+  // Check scan reminder
+  const showScan = (state.strikeCount % 3 === 0);
+
+  // Reset for next strike
+  resetForNewStrike();
+  autoSave();
+
+  return showScan;
+}
+
+function resetForNewStrike() {
+  state.selectedPlatform = null;
+  state.platformQuality = '';
+  state.platformLocation = '';
+  state.platformType = '';
+  state.newPlatformsPendingAdd = [];
+  state.hammerstoneFailure = 'None';
+  state.blowSuccess = 3;
+  state.unifacialSimple = 0;
+  state.unifacialAbrupt = 0;
+  state.bifacialSimple = 0;
+  state.bifacialAbrupt = 0;
+  state.coreFragmentation = false;
+  state.fragmentNumber = 0;
+  state.strikeNotes = '';
+
+  // Reset UI
+  document.getElementById('hammerstoneID').value = '';
+  document.querySelectorAll('#hammerFailPicker button').forEach((b, i) => b.classList.toggle('active', i === 0));
+  document.querySelectorAll('#blowSuccessPicker button').forEach((b, i) => b.classList.toggle('active', i === 3));
+  document.querySelectorAll('#qualityPicker button').forEach((b, i) => b.classList.toggle('active', i === 0));
+  document.getElementById('locationPicker').value = '';
+  document.getElementById('typePicker').value = '';
+  ['unifacialSimple', 'unifacialAbrupt', 'bifacialSimple', 'bifacialAbrupt', 'fragmentNumber'].forEach(f => {
+    document.getElementById(f).textContent = '0';
+  });
+  document.getElementById('postCoreWeight').value = '';
+  document.getElementById('coreFragToggle').checked = false;
+  document.getElementById('fragFields').style.display = 'none';
+  document.getElementById('fragmentWeight') && (document.getElementById('fragmentWeight').value = '');
+  document.getElementById('strikeNotes').value = '';
+
+  // Reset platform statuses back to A for surviving platforms
+  state.platforms.forEach(p => p.status = 'A');
+}
+
+function recordAndContinue() {
+  const showScan = recordStrike();
+  if (showScan) {
+    document.getElementById('scanModalText').textContent =
+      `This is strike #${state.strikeCount}. Please create a 3D model of the core before continuing.`;
+    document.getElementById('scanModal').classList.add('show');
+  } else {
+    goToTab('platformSetup');
+  }
+}
+
+function closeScanModal() {
+  document.getElementById('scanModal').classList.remove('show');
+  goToTab('platformSetup');
+}
+
+function recordAndEndTrial() {
+  recordStrike();
+  state.isTrialComplete = true;
+  document.getElementById('endTrialTab').style.display = '';
+  goToTab('endTrial');
+}
+
+// ==================== TAB 6: End of Experiment ====================
+function setStoneQuality(val) {
+  state.stoneQualityRating = val;
+  document.querySelectorAll('#stoneQualityPicker button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function renderEndTrial() {
+  if (state.strikeRecords.length === 0) return;
+
+  const section = document.getElementById('endTrialTableSection');
+  section.style.display = '';
+  document.getElementById('endTrialTableHeader').textContent =
+    `Strike Records (${state.strikeRecords.length} rows)`;
+
+  const table = document.getElementById('endTrialTable');
+  let html = '<table class="data-table"><thead><tr>';
+  html += '<th>Strike</th><th>Platform</th><th>Quality</th><th>Location</th><th>Type</th>';
+  html += '<th>Pre</th><th>New</th><th>Rm Flk</th><th>Rm Frg</th>';
+  html += '<th>Blow</th><th>Core Wt</th><th>Frag?</th><th class="notes-col">Notes</th>';
+  html += '</tr></thead><tbody>';
+
+  for (const r of state.strikeRecords) {
+    if (r.isUnviable) {
+      html += `<tr class="unviable">`;
+      html += `<td>${r.strikeNumber}</td><td>${r.randomPlatform}</td>`;
+      for (let i = 0; i < 10; i++) html += '<td></td>';
+      html += `<td class="notes-col">Unviable</td></tr>`;
+    } else {
+      const ps = r.postStrikeData;
+      html += `<tr>`;
+      html += `<td>${r.strikeNumber}</td><td>${r.randomPlatform}</td>`;
+      html += `<td>${r.platformQuality}</td><td>${r.platformLocation}</td><td>${r.platformType}</td>`;
+      html += `<td>${r.platformsPreBlow}</td><td>${r.platformsCreated}</td>`;
+      html += `<td>${r.platformsRemovedFlake}</td><td>${r.platformsRemovedFragment}</td>`;
+      html += `<td>${ps.blowSuccess}</td>`;
+      html += `<td>${ps.coreWeight != null ? ps.coreWeight.toFixed(1) : '-'}</td>`;
+      html += `<td>${ps.coreFragmentation ? 'Y' : 'N'}</td>`;
+      html += `<td class="notes-col">${ps.strikeNotes || ''}</td>`;
+      html += `</tr>`;
+    }
+  }
+
+  html += '</tbody></table>';
+  table.innerHTML = html;
+}
+
+// ==================== CSV EXPORT ====================
+function buildCSV() {
+  if (state.strikeRecords.length === 0) return '';
+
+  // Read end-of-experiment fields from DOM
+  state.finalCoreWeight = parseFloat(document.getElementById('finalCoreWeight').value) || null;
+  state.debrisWeight = parseFloat(document.getElementById('debrisWeight').value) || null;
+
+  // Gather all platform IDs across all non-unviable records
+  const allPlatIds = new Set();
+  state.strikeRecords.filter(r => !r.isUnviable).forEach(r => {
+    Object.keys(r.platformStatuses).forEach(k => allPlatIds.add(parseInt(k)));
+  });
+  const sortedPlatIds = [...allPlatIds].sort((a, b) => a - b);
+
+  // Header
+  let csv = 'Experiment_Number,Date,Clast_Number_ID,Clast_Source_ID,Clast_Weight_g,Clast_Notes,';
+  csv += 'Final_Core_Weight_g,Debris_Weight_g,Stone_Quality_Rating,';
+  csv += 'Strike,RandomPlatform,Platform_Quality,Platform_Location,Platform_Type,';
+  csv += 'Platforms_Pre_Blow,Platforms_Created,Platforms_Removed_Flake,Platforms_Removed_Fragment,';
+  csv += 'Hammerstone_ID,Hammerstone_Failure,Blow_Success,';
+  csv += 'Unifacial_Simple,Unifacial_Abrupt,Bifacial_Simple,Bifacial_Abrupt,';
+  csv += 'Core_Weight_g,Core_Fragmentation,Fragment_Number,Fragment_Weight_g,';
+  csv += 'Strike_Notes';
+  sortedPlatIds.forEach(id => csv += `,Platform_${id}`);
+  csv += '\n';
+
+  // Experiment prefix
+  const esc = (s) => `"${(s || '').toString().replace(/"/g, '""')}"`;
+  const trialPrefix = [
+    esc(state.trialNumber), esc(state.trialDate), esc(state.clastNumberID),
+    esc(state.clastSourceID), state.clastWeight || 0, esc(state.clastNotes),
+    state.finalCoreWeight || 0, state.debrisWeight || 0, state.stoneQualityRating
+  ].join(',');
+
+  // Data rows
+  for (const r of state.strikeRecords) {
+    csv += trialPrefix + ',';
+    csv += `${r.strikeNumber},${r.randomPlatform},`;
+
+    if (r.isUnviable) {
+      // 18 empty columns + note
+      csv += ','.repeat(18);
+      csv += esc(`Platform ${r.randomPlatform} unviable`);
+      sortedPlatIds.forEach(() => csv += ',');
+    } else {
+      const ps = r.postStrikeData;
+      csv += `${esc(r.platformQuality)},${esc(r.platformLocation)},${esc(r.platformType)},`;
+      csv += `${r.platformsPreBlow},${r.platformsCreated},${r.platformsRemovedFlake},${r.platformsRemovedFragment},`;
+      csv += `${esc(ps.hammerstoneID)},${esc(ps.hammerstoneFailure)},${ps.blowSuccess},`;
+      csv += `${ps.unifacialSimpleCount},${ps.unifacialAbruptCount},${ps.bifacialSimpleCount},${ps.bifacialAbruptCount},`;
+      csv += `${ps.coreWeight || 0},${ps.coreFragmentation},${ps.fragmentNumber || 0},${ps.fragmentWeight || 0},`;
+      csv += esc(ps.strikeNotes);
+      sortedPlatIds.forEach(id => {
+        csv += ',' + (r.platformStatuses[id] || '');
+      });
+    }
+    csv += '\n';
+  }
+
+  return csv;
+}
+
+function prepareCSV() {
+  // Read final fields
+  state.finalCoreWeight = parseFloat(document.getElementById('finalCoreWeight').value) || null;
+  state.debrisWeight = parseFloat(document.getElementById('debrisWeight').value) || null;
+
+  const csv = buildCSV();
+  if (!csv) {
+    alert('No data to export');
+    return null;
+  }
+
+  const trialNum = state.trialNumber || 'unknown';
+  const now = new Date();
+  const ts = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const filename = `experiment_${trialNum}_${ts}.csv`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  return { blob, filename };
+}
+
+function downloadCSV() {
+  const result = prepareCSV();
+  if (!result) return;
+
+  const url = URL.createObjectURL(result.blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = result.filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 500);
+}
+
+function shareCSV() {
+  const result = prepareCSV();
+  if (!result) return;
+
+  if (navigator.canShare && navigator.canShare({ files: [new File([result.blob], result.filename, { type: 'text/csv' })] })) {
+    const file = new File([result.blob], result.filename, { type: 'text/csv' });
+    navigator.share({ files: [file], title: 'Flaking Experiments Data' })
+      .catch(err => {
+        if (err.name !== 'AbortError') console.warn('Share failed:', err);
+      });
+  } else {
+    alert('Share is not supported on this browser. Use "Save CSV to Downloads" instead.');
+  }
+}
+
+// ==================== FILE SYSTEM ACCESS API (Auto-save to folder) ====================
+let saveFolderHandle = null;  // DirectoryHandle from File System Access API
+
+async function pickSaveFolder() {
+  try {
+    saveFolderHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    document.getElementById('folderStatus').innerHTML =
+      `<span style="color:var(--green);font-weight:600;">📂 ${saveFolderHandle.name}</span>
+       <span class="helper-sm"> — CSV will auto-save here after every strike</span>`;
+    showAutoSaveIndicator('Folder selected');
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      console.warn('Folder picker error:', e);
+    }
+  }
+}
+
+async function saveToFolder() {
+  if (!saveFolderHandle) return false;
+
+  try {
+    const csv = buildCSV();
+    if (!csv) return false;
+
+    const trialNum = state.trialNumber || 'unknown';
+    const filename = `experiment_${trialNum}_autosave.csv`;
+
+    const fileHandle = await saveFolderHandle.getFileHandle(filename, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(csv);
+    await writable.close();
+    return true;
+  } catch (e) {
+    console.warn('File system save failed:', e);
+    // Permission might have been revoked — clear the handle
+    if (e.name === 'NotAllowedError') {
+      saveFolderHandle = null;
+      document.getElementById('folderStatus').innerHTML =
+        `<span style="color:var(--red);">Folder access lost. Please re-select.</span>`;
+    }
+    return false;
+  }
+}
+
+// ==================== AUTO-SAVE ====================
+async function autoSave() {
+  try {
+    // Always save to localStorage as backup
+    const csv = buildCSV();
+    if (csv) {
+      const key = `flaking_experiment_${state.trialNumber || 'unknown'}`;
+      localStorage.setItem(key, csv);
+      localStorage.setItem(key + '_state', JSON.stringify({
+        ...state,
+        removedPlatformIds: [...state.removedPlatformIds]
+      }));
+    }
+
+    // Also save to folder if one was selected
+    if (saveFolderHandle) {
+      const saved = await saveToFolder();
+      showAutoSaveIndicator(saved ? 'Saved to folder' : 'Saved to browser');
+    } else {
+      showAutoSaveIndicator('Auto-saved');
+    }
+  } catch (e) {
+    console.warn('Auto-save failed:', e);
+  }
+}
+
+function showAutoSaveIndicator(message) {
+  const ind = document.getElementById('autosaveIndicator');
+  ind.textContent = '✓ ' + message;
+  ind.classList.add('show');
+  setTimeout(() => ind.classList.remove('show'), 1500);
+}
+
+// ==================== SERVICE WORKER ====================
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed:', err));
+}
+
+// ==================== INIT ====================
+// Show folder picker section only if File System Access API is supported
+if (window.showDirectoryPicker) {
+  document.getElementById('folderPickerSection').style.display = '';
+}
+
+renderPlatformSetup();
+</script>
+</body>
+</html>
