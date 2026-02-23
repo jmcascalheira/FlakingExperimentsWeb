@@ -392,6 +392,19 @@
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
 
+  /* Strike banner */
+  .strike-banner {
+    background: rgba(0,122,255,0.12);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 15px;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    display: none;
+  }
+
   @media (max-width: 400px) {
     .tab-btn { padding: 10px 10px; font-size: 12px; }
     .platform-square { width: 60px; height: 60px; font-size: 20px; }
@@ -480,6 +493,7 @@
 
 <!-- ===== TAB 3: Random Platform ===== -->
 <div class="content tab-panel" id="panel-randomPlatform">
+  <div class="strike-banner" id="strikeBanner-randomPlatform"></div>
   <div class="section text-center">
     <div class="section-header">Generate a Random Platform</div>
     <button class="btn btn-green mb-16" onclick="generateRandomPlatform()">
@@ -543,10 +557,17 @@
   <button class="btn btn-primary" id="goToPlatformChangesBtn" disabled onclick="goToTab('platformChanges')">
     Go to Record Platform Changes →
   </button>
+
+  <div id="undoSection" style="display:none;margin-top:12px;">
+    <button class="btn btn-red-outline" style="width:100%;" onclick="undoLastStrike()">
+      ↩ Undo Last Strike
+    </button>
+  </div>
 </div>
 
 <!-- ===== TAB 4: Platform Changes ===== -->
 <div class="content tab-panel" id="panel-platformChanges">
+  <div class="strike-banner" id="strikeBanner-platformChanges"></div>
   <div class="section">
     <div class="section-header">Record platform changes from this strike</div>
     <div class="helper-sm mb-12 text-center">Tap a platform to cycle: Available → Removed by Flake → Removed by Fragment</div>
@@ -555,8 +576,11 @@
     <div class="platform-grid" id="changesGrid"></div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
-      <span class="helper-sm">Add platforms created by this blow:</span>
-      <button class="platform-square plat-new" style="width:40px;height:40px;font-size:22px;border-color:var(--green);" onclick="addPlatformThisBlow()">+</button>
+      <span class="helper-sm">Add/remove platforms created by this blow:</span>
+      <div style="display:flex;gap:8px;">
+        <button id="removePlatformThisBlowBtn" class="platform-square" style="width:40px;height:40px;font-size:22px;border-color:var(--red);color:var(--red);background:rgba(255,59,48,0.1);" onclick="removePlatformThisBlow()" disabled>−</button>
+        <button class="platform-square plat-new" style="width:40px;height:40px;font-size:22px;border-color:var(--green);" onclick="addPlatformThisBlow()">+</button>
+      </div>
     </div>
 
     <div class="legend mt-8">
@@ -574,6 +598,7 @@
 
 <!-- ===== TAB 5: Post-Strike Data ===== -->
 <div class="content tab-panel" id="panel-postStrike">
+  <div class="strike-banner" id="strikeBanner-postStrike"></div>
   <div class="section">
     <div class="section-header">Hammerstone</div>
     <div class="form-row">
@@ -654,17 +679,14 @@
     </div>
     <div id="fragFields" style="display:none">
       <div class="form-row">
-        <label>Fragment Number</label>
+        <label>Fragment Number (max 5)</label>
         <div class="stepper">
-          <button onclick="stepValue('fragmentNumber',-1)">−</button>
+          <button onclick="stepFragmentNumber(-1)">−</button>
           <span id="fragmentNumber">0</span>
-          <button onclick="stepValue('fragmentNumber',1)">+</button>
+          <button onclick="stepFragmentNumber(1)">+</button>
         </div>
       </div>
-      <div class="form-row">
-        <label>Fragment Weight (g)</label>
-        <input type="number" id="fragmentWeight" step="0.01" placeholder="0">
-      </div>
+      <div id="fragmentWeightFields"></div>
     </div>
   </div>
 
@@ -770,7 +792,6 @@ const state = {
   postCoreWeight: null,
   coreFragmentation: false,
   fragmentNumber: 0,
-  fragmentWeight: null,
   strikeNotes: '',
 
   // Records
@@ -788,6 +809,9 @@ function goToTab(tabId) {
   document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
   document.getElementById(`panel-${tabId}`).classList.add('active');
 
+  // Update strike banners
+  updateStrikeBanners();
+
   // Refresh views
   if (tabId === 'platformSetup') renderPlatformSetup();
   if (tabId === 'randomPlatform') renderRandomPlatform();
@@ -801,6 +825,18 @@ function goToTab(tabId) {
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => goToTab(btn.dataset.tab));
 });
+
+function updateStrikeBanners() {
+  const bannerIds = ['strikeBanner-randomPlatform', 'strikeBanner-platformChanges', 'strikeBanner-postStrike'];
+  const strikeNum = state.strikeCount + 1;
+  bannerIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = `Strike #${strikeNum}`;
+      el.style.display = 'block';
+    }
+  });
+}
 
 // ==================== TAB 1: Experiment Details ====================
 function startTrial() {
@@ -830,8 +866,16 @@ function removePlatform() {
   if (state.platforms.length > 1) {
     const removed = state.platforms.pop();
     state.newPlatformsPendingAdd = state.newPlatformsPendingAdd.filter(id => id !== removed.id);
+    recalcNextPlatformId();
     renderPlatformSetup();
   }
+}
+
+function recalcNextPlatformId() {
+  const activeIds = state.platforms.map(p => p.id);
+  const removedIds = [...state.removedPlatformIds];
+  const allIds = [...activeIds, ...removedIds];
+  state.nextPlatformId = allIds.length > 0 ? Math.max(...allIds) + 1 : 1;
 }
 
 function renderPlatformSetup() {
@@ -884,10 +928,17 @@ function renderRandomPlatform() {
   // Reset pickers
   document.getElementById('locationPicker').value = state.platformLocation;
   document.getElementById('typePicker').value = state.platformType;
+
+  // Toggle undo button visibility
+  const undoSection = document.getElementById('undoSection');
+  if (undoSection) {
+    undoSection.style.display = state.strikeRecords.length > 0 ? 'block' : 'none';
+  }
 }
 
 function markUnviable() {
   if (state.selectedPlatform === null) return;
+  const snapshot = capturePreStrikeSnapshot();
   const id = state.selectedPlatform;
 
   // Record unviable row
@@ -903,7 +954,8 @@ function markUnviable() {
     platformsRemovedFlake: 0,
     platformsRemovedFragment: 0,
     platformStatuses: {},
-    postStrikeData: defaultPostStrike()
+    postStrikeData: defaultPostStrike(),
+    preStrikeSnapshot: snapshot
   });
 
   // Remove platform
@@ -926,6 +978,14 @@ function markUnviable() {
 // ==================== TAB 4: Platform Changes ====================
 function addPlatformThisBlow() {
   addPlatform(true);
+  renderPlatformChanges();
+}
+
+function removePlatformThisBlow() {
+  if (state.newPlatformsPendingAdd.length === 0) return;
+  const lastNewId = state.newPlatformsPendingAdd.pop();
+  state.platforms = state.platforms.filter(p => p.id !== lastNewId);
+  recalcNextPlatformId();
   renderPlatformChanges();
 }
 
@@ -963,6 +1023,10 @@ function renderPlatformChanges() {
     else if (p.status === 'AF') cls = 'plat-fragment';
     return `<div class="platform-square ${cls}" onclick="cyclePlatformStatus(${p.id})">${p.id}</div>`;
   }).join('');
+
+  // Toggle minus button
+  const minusBtn = document.getElementById('removePlatformThisBlowBtn');
+  if (minusBtn) minusBtn.disabled = state.newPlatformsPendingAdd.length === 0;
 }
 
 // ==================== TAB 5: Post-Strike Data ====================
@@ -1003,7 +1067,7 @@ function defaultPostStrike() {
     coreWeight: null,
     coreFragmentation: false,
     fragmentNumber: 0,
-    fragmentWeight: null,
+    fragmentWeights: [],
     strikeNotes: ''
   };
 }
@@ -1020,18 +1084,65 @@ function collectPostStrikeData() {
     coreWeight: parseFloat(document.getElementById('postCoreWeight').value) || null,
     coreFragmentation: state.coreFragmentation,
     fragmentNumber: state.fragmentNumber,
-    fragmentWeight: parseFloat(document.getElementById('fragmentWeight')?.value) || null,
+    fragmentWeights: collectFragmentWeights(),
     strikeNotes: document.getElementById('strikeNotes').value
   };
 }
 
+function collectFragmentWeights() {
+  const weights = [];
+  for (let i = 1; i <= state.fragmentNumber; i++) {
+    const el = document.getElementById(`fragWeight_${i}`);
+    weights.push(el ? (parseFloat(el.value) || 0) : 0);
+  }
+  return weights;
+}
+
+function stepFragmentNumber(delta) {
+  let val = state.fragmentNumber + delta;
+  if (val < 0) val = 0;
+  if (val > 5) val = 5;
+  state.fragmentNumber = val;
+  document.getElementById('fragmentNumber').textContent = val;
+  renderFragmentWeightFields();
+}
+
+function renderFragmentWeightFields() {
+  const container = document.getElementById('fragmentWeightFields');
+  // Preserve existing values
+  const existingValues = [];
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById(`fragWeight_${i}`);
+    existingValues.push(el ? el.value : '');
+  }
+  let html = '';
+  for (let i = 1; i <= state.fragmentNumber; i++) {
+    html += `<div class="form-row">
+      <label>Fragment ${i} Weight (g)</label>
+      <input type="number" id="fragWeight_${i}" step="0.01" placeholder="0" value="${existingValues[i-1] || ''}">
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function capturePreStrikeSnapshot() {
+  return {
+    platforms: state.platforms.map(p => ({ ...p })),
+    removedPlatformIds: new Set(state.removedPlatformIds),
+    nextPlatformId: state.nextPlatformId,
+    strikeCount: state.strikeCount,
+    newPlatformsPendingAdd: [...state.newPlatformsPendingAdd]
+  };
+}
+
 function recordStrike() {
+  const snapshot = capturePreStrikeSnapshot();
   state.strikeCount++;
 
   // Build platform status map
   const statusMap = {};
   for (const id of state.removedPlatformIds) {
-    statusMap[id] = 'B';
+    statusMap[id] = '';
   }
   for (const p of state.platforms) {
     if (!state.newPlatformsPendingAdd.includes(p.id)) {
@@ -1056,7 +1167,8 @@ function recordStrike() {
     platformsRemovedFlake: rmFlake,
     platformsRemovedFragment: rmFrag,
     platformStatuses: { ...statusMap },
-    postStrikeData: collectPostStrikeData()
+    postStrikeData: collectPostStrikeData(),
+    preStrikeSnapshot: snapshot
   };
 
   state.strikeRecords.push(record);
@@ -1106,11 +1218,43 @@ function resetForNewStrike() {
   document.getElementById('postCoreWeight').value = '';
   document.getElementById('coreFragToggle').checked = false;
   document.getElementById('fragFields').style.display = 'none';
-  document.getElementById('fragmentWeight') && (document.getElementById('fragmentWeight').value = '');
+  document.getElementById('fragmentWeightFields').innerHTML = '';
   document.getElementById('strikeNotes').value = '';
 
   // Reset platform statuses back to A for surviving platforms
   state.platforms.forEach(p => p.status = 'A');
+}
+
+function undoLastStrike() {
+  if (state.strikeRecords.length === 0) return;
+  const lastRecord = state.strikeRecords.pop();
+  const snapshot = lastRecord.preStrikeSnapshot;
+
+  if (snapshot) {
+    state.platforms = snapshot.platforms;
+    state.removedPlatformIds = snapshot.removedPlatformIds instanceof Set
+      ? snapshot.removedPlatformIds
+      : new Set(snapshot.removedPlatformIds);
+    state.nextPlatformId = snapshot.nextPlatformId;
+    state.strikeCount = snapshot.strikeCount;
+    state.newPlatformsPendingAdd = snapshot.newPlatformsPendingAdd || [];
+  }
+
+  // Reset current strike state
+  state.selectedPlatform = null;
+  state.platformQuality = '';
+  state.platformLocation = '';
+  state.platformType = '';
+
+  autoSave();
+
+  if (lastRecord.isUnviable) {
+    // If the undone record was an unviable mark, stay on Random Platform
+    goToTab('randomPlatform');
+  } else {
+    // Go to Platform Changes so user can re-do the platform changes
+    goToTab('platformChanges');
+  }
 }
 
 function recordAndContinue() {
@@ -1120,13 +1264,13 @@ function recordAndContinue() {
       `This is strike #${state.strikeCount}. Please create a 3D model of the core before continuing.`;
     document.getElementById('scanModal').classList.add('show');
   } else {
-    goToTab('platformSetup');
+    goToTab('randomPlatform');
   }
 }
 
 function closeScanModal() {
   document.getElementById('scanModal').classList.remove('show');
-  goToTab('platformSetup');
+  goToTab('randomPlatform');
 }
 
 function recordAndEndTrial() {
@@ -1205,7 +1349,7 @@ function buildCSV() {
   csv += 'Platforms_Pre_Blow,Platforms_Created,Platforms_Removed_Flake,Platforms_Removed_Fragment,';
   csv += 'Hammerstone_ID,Hammerstone_Failure,Blow_Success,';
   csv += 'Unifacial_Simple,Unifacial_Abrupt,Bifacial_Simple,Bifacial_Abrupt,';
-  csv += 'Core_Weight_g,Core_Fragmentation,Fragment_Number,Fragment_Weight_g,';
+  csv += 'Core_Weight_g,Core_Fragmentation,Fragment_Number,Fragment_1_Weight_g,Fragment_2_Weight_g,Fragment_3_Weight_g,Fragment_4_Weight_g,Fragment_5_Weight_g,';
   csv += 'Strike_Notes';
   sortedPlatIds.forEach(id => csv += `,Platform_${id}`);
   csv += '\n';
@@ -1224,8 +1368,8 @@ function buildCSV() {
     csv += `${r.strikeNumber},${r.randomPlatform},`;
 
     if (r.isUnviable) {
-      // 18 empty columns + note
-      csv += ','.repeat(18);
+      // 22 empty columns + note
+      csv += ','.repeat(22);
       csv += esc(`Platform ${r.randomPlatform} unviable`);
       sortedPlatIds.forEach(() => csv += ',');
     } else {
@@ -1234,7 +1378,12 @@ function buildCSV() {
       csv += `${r.platformsPreBlow},${r.platformsCreated},${r.platformsRemovedFlake},${r.platformsRemovedFragment},`;
       csv += `${esc(ps.hammerstoneID)},${esc(ps.hammerstoneFailure)},${ps.blowSuccess},`;
       csv += `${ps.unifacialSimpleCount},${ps.unifacialAbruptCount},${ps.bifacialSimpleCount},${ps.bifacialAbruptCount},`;
-      csv += `${ps.coreWeight || 0},${ps.coreFragmentation},${ps.fragmentNumber || 0},${ps.fragmentWeight || 0},`;
+      const fw = ps.fragmentWeights || [];
+      csv += `${ps.coreWeight || 0},${ps.coreFragmentation},${ps.fragmentNumber || 0}`;
+      for (let fi = 0; fi < 5; fi++) {
+        csv += `,${fw[fi] || ''}`;
+      }
+      csv += ',';
       csv += esc(ps.strikeNotes);
       sortedPlatIds.forEach(id => {
         csv += ',' + (r.platformStatuses[id] || '');

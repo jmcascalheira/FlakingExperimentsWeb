@@ -1,4 +1,4 @@
-const CACHE_NAME = 'flaking-experiments-v1';
+const CACHE_NAME = 'flaking-experiments-v2';
 const urlsToCache = [
   './',
   './index.html'
