@@ -332,6 +332,130 @@
   .data-table .unviable { color: var(--red); }
   .data-table .notes-col { min-width: 100px; text-align: left; }
 
+  /* Editable table cells */
+  .cell-editable {
+    cursor: pointer;
+    position: relative;
+    min-height: 36px;
+  }
+  .cell-editable:hover { background: rgba(0,122,255,0.08); }
+  .cell-editable:active { background: rgba(0,122,255,0.15); }
+  .cell-readonly { color: var(--secondary); background: rgba(0,0,0,0.02); }
+
+  .inline-edit-input {
+    width: 100%;
+    min-width: 50px;
+    max-width: 80px;
+    padding: 2px 4px;
+    border: 1.5px solid var(--accent);
+    border-radius: 4px;
+    font-size: 12px;
+    text-align: center;
+    background: white;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .inline-edit-text {
+    width: 100%;
+    min-width: 80px;
+    max-width: 200px;
+    padding: 2px 4px;
+    border: 1.5px solid var(--accent);
+    border-radius: 4px;
+    font-size: 12px;
+    text-align: left;
+    background: white;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .inline-edit-select {
+    max-width: 130px;
+    padding: 2px;
+    border: 1.5px solid var(--accent);
+    border-radius: 4px;
+    font-size: 11px;
+    background: white;
+  }
+
+  /* Expand/collapse arrow */
+  .expand-arrow {
+    cursor: pointer;
+    font-size: 10px;
+    color: var(--secondary);
+    user-select: none;
+    -webkit-user-select: none;
+    padding: 4px;
+  }
+  .expand-arrow:hover { color: var(--accent); }
+
+  /* Detail row */
+  .detail-row td {
+    padding: 0 !important;
+    border-top: none !important;
+    background: var(--bg);
+  }
+  .detail-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 10px 8px;
+  }
+  @media (max-width: 500px) { .detail-panel { grid-template-columns: 1fr; } }
+  .detail-group {
+    background: var(--card);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .detail-group-header {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--secondary);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .detail-field {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    font-size: 12px;
+    border-bottom: 1px solid var(--lightgray);
+  }
+  .detail-field:last-child { border-bottom: none; }
+  .detail-field label { font-size: 12px; color: var(--secondary); flex-shrink: 0; }
+  .detail-field input[type="text"],
+  .detail-field input[type="number"] {
+    width: 80px;
+    padding: 4px 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    text-align: right;
+    background: var(--bg);
+  }
+  .stepper.mini { gap: 8px; }
+  .stepper.mini button { width: 26px; height: 26px; font-size: 14px; }
+  .stepper.mini span { font-size: 13px; min-width: 20px; }
+  .segmented.mini button { padding: 4px 8px; font-size: 11px; }
+
+  /* Platform status badges in detail row */
+  .plat-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+  .plat-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 0 4px;
+  }
+  .plat-badge-a { background: rgba(0,0,0,0.06); color: var(--text); }
+  .plat-badge-ax { background: rgba(255,149,0,0.25); color: var(--secondary); }
+  .plat-badge-af { background: rgba(255,59,48,0.25); color: var(--secondary); }
+  .plat-badge-gone { background: rgba(0,0,0,0.03); color: var(--lightgray); }
+
   /* Helper text */
   .helper { font-size: 13px; color: var(--secondary); }
   .helper-sm { font-size: 12px; color: var(--secondary); }
@@ -423,7 +547,7 @@
   <button class="tab-btn" data-tab="randomPlatform">Random Platform</button>
   <button class="tab-btn" data-tab="platformChanges">Platform Changes</button>
   <button class="tab-btn" data-tab="postStrike">Post-Strike</button>
-  <button class="tab-btn" data-tab="endTrial" id="endTrialTab" style="display:none">End Experiment</button>
+  <button class="tab-btn" data-tab="endTrial" id="endTrialTab" style="display:none">Records</button>
 </div>
 
 <!-- ===== TAB 1: Experiment Details ===== -->
@@ -705,38 +829,41 @@
   </div>
 </div>
 
-<!-- ===== TAB 6: End of Experiment ===== -->
+<!-- ===== TAB 6: Records / End of Experiment ===== -->
 <div class="content tab-panel" id="panel-endTrial">
-  <div class="section">
-    <div class="section-header">Final Measurements</div>
-    <div class="form-row">
-      <label>Final Core Weight (g)</label>
-      <input type="number" id="finalCoreWeight" step="0.01" placeholder="0">
-    </div>
-    <div class="form-row">
-      <label>Debris Weight (g)</label>
-      <input type="number" id="debrisWeight" step="0.01" placeholder="0">
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-header">Overall Stone Quality Assessment</div>
-    <div class="helper-sm mb-8">1 = low, 3 = average, 5 = high</div>
-    <div class="segmented" id="stoneQualityPicker">
-      <button onclick="setStoneQuality(1)">1</button>
-      <button onclick="setStoneQuality(2)">2</button>
-      <button class="active" onclick="setStoneQuality(3)">3</button>
-      <button onclick="setStoneQuality(4)">4</button>
-      <button onclick="setStoneQuality(5)">5</button>
-    </div>
-  </div>
-
   <div class="section" id="endTrialTableSection" style="display:none">
     <div class="section-header" id="endTrialTableHeader">Strike Records</div>
+    <div class="helper-sm mb-8">Tap a cell to edit. Tap ▶ to expand a row and see all fields.</div>
     <div class="data-table-wrapper" id="endTrialTable"></div>
   </div>
 
-  <button class="btn btn-green" onclick="downloadCSV()">
+  <div id="endTrialFinalSection" style="display:none">
+    <div class="section">
+      <div class="section-header">Final Measurements</div>
+      <div class="form-row">
+        <label>Final Core Weight (g)</label>
+        <input type="number" id="finalCoreWeight" step="0.01" placeholder="0">
+      </div>
+      <div class="form-row">
+        <label>Debris Weight (g)</label>
+        <input type="number" id="debrisWeight" step="0.01" placeholder="0">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">Overall Stone Quality Assessment</div>
+      <div class="helper-sm mb-8">1 = low, 3 = average, 5 = high</div>
+      <div class="segmented" id="stoneQualityPicker">
+        <button onclick="setStoneQuality(1)">1</button>
+        <button onclick="setStoneQuality(2)">2</button>
+        <button class="active" onclick="setStoneQuality(3)">3</button>
+        <button onclick="setStoneQuality(4)">4</button>
+        <button onclick="setStoneQuality(5)">5</button>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-green" id="endTrialSaveBtn" style="display:none" onclick="downloadCSV()">
     💾 Save CSV to Downloads
   </button>
 </div>
@@ -800,6 +927,38 @@ const state = {
   isTrialComplete: false,
   currentTab: 'trialDetails'
 };
+
+// ==================== EDIT CONSTANTS ====================
+let expandedRowIndex = null;
+
+const LOCATION_OPTIONS = [
+  {value:'', label:'--'},
+  {value:'Position 1', label:'Pos 1'},
+  {value:'Position 2', label:'Pos 2'},
+  {value:'Position 3', label:'Pos 3'},
+  {value:'Position 4', label:'Pos 4'},
+  {value:'Position 5', label:'Pos 5'},
+  {value:'Position 6', label:'Pos 6'},
+  {value:'Position 7', label:'Pos 7'}
+];
+
+const TYPE_OPTIONS = [
+  {value:'', label:'--'},
+  {value:'Cortical', label:'Cortical'},
+  {value:'Flaw Cortex', label:'Flaw Cortex'},
+  {value:'Fracture Surface', label:'Frac. Surface'},
+  {value:'Plain', label:'Plain'},
+  {value:'Dihedral', label:'Dihedral'}
+];
+
+const HAMMER_FAIL_OPTIONS = [
+  {value:'None', label:'None'},
+  {value:'Chipping', label:'Chipping'},
+  {value:'Failure', label:'Failure'}
+];
+
+const QUALITY_CYCLE = ['', '1', '2', '3', '4', '5'];
+const BLOW_CYCLE = [0, 1, 2, 3, 4, 5];
 
 // ==================== TAB NAVIGATION ====================
 function goToTab(tabId) {
@@ -957,6 +1116,9 @@ function markUnviable() {
     postStrikeData: defaultPostStrike(),
     preStrikeSnapshot: snapshot
   });
+
+  // Show Records tab
+  document.getElementById('endTrialTab').style.display = '';
 
   // Remove platform
   state.removedPlatformIds.add(id);
@@ -1173,6 +1335,9 @@ function recordStrike() {
 
   state.strikeRecords.push(record);
 
+  // Show Records tab after first strike
+  document.getElementById('endTrialTab').style.display = '';
+
   // Track removed platforms
   state.platforms.filter(p => p.status === 'AX' || p.status === 'AF').forEach(p => {
     state.removedPlatformIds.add(p.id);
@@ -1287,44 +1452,313 @@ function setStoneQuality(val) {
   event.target.classList.add('active');
 }
 
+// ---- Inline editing helpers ----
+function getFieldValue(record, fieldPath) {
+  if (fieldPath.startsWith('ps.')) return record.postStrikeData[fieldPath.slice(3)];
+  return record[fieldPath];
+}
+
+function setFieldValue(record, fieldPath, value) {
+  if (fieldPath.startsWith('ps.')) record.postStrikeData[fieldPath.slice(3)] = value;
+  else record[fieldPath] = value;
+}
+
+function saveAndRefresh() {
+  autoSave();
+  renderEndTrial();
+}
+
+function handleCycleEdit(idx, fieldPath, values) {
+  const rec = state.strikeRecords[idx];
+  const cur = getFieldValue(rec, fieldPath);
+  const ci = values.indexOf(cur);
+  const next = values[(ci + 1) % values.length];
+  setFieldValue(rec, fieldPath, next);
+  saveAndRefresh();
+}
+
+function toggleBoolField(idx, fieldPath) {
+  const rec = state.strikeRecords[idx];
+  const cur = getFieldValue(rec, fieldPath);
+  setFieldValue(rec, fieldPath, !cur);
+  // If turning off fragmentation, clear fragment data
+  if (fieldPath === 'ps.coreFragmentation' && cur) {
+    rec.postStrikeData.fragmentNumber = 0;
+    rec.postStrikeData.fragmentWeights = [];
+  }
+  saveAndRefresh();
+}
+
+function makeNumberEditable(td, idx, fieldPath, isDecimal) {
+  if (td.querySelector('input')) return;
+  const rec = state.strikeRecords[idx];
+  const cur = getFieldValue(rec, fieldPath);
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.step = isDecimal ? '0.01' : '1';
+  input.value = cur != null ? cur : '';
+  input.className = 'inline-edit-input';
+  td.textContent = '';
+  td.appendChild(input);
+  input.focus();
+  input.select();
+  const save = () => {
+    const val = isDecimal ? (parseFloat(input.value) || null) : (parseInt(input.value) || 0);
+    setFieldValue(rec, fieldPath, val);
+    saveAndRefresh();
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+}
+
+function makeSelectEditable(td, idx, fieldPath, options) {
+  if (td.querySelector('select')) return;
+  const rec = state.strikeRecords[idx];
+  const cur = getFieldValue(rec, fieldPath);
+  const sel = document.createElement('select');
+  sel.className = 'inline-edit-select';
+  options.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.value;
+    opt.textContent = o.label;
+    if (o.value === cur) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  td.textContent = '';
+  td.appendChild(sel);
+  sel.focus();
+  const save = () => {
+    setFieldValue(rec, fieldPath, sel.value);
+    saveAndRefresh();
+  };
+  sel.addEventListener('change', save);
+  sel.addEventListener('blur', save);
+}
+
+function makeTextEditable(td, idx, fieldPath) {
+  if (td.querySelector('input')) return;
+  const rec = state.strikeRecords[idx];
+  const cur = getFieldValue(rec, fieldPath) || '';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = cur;
+  input.className = 'inline-edit-text';
+  td.textContent = '';
+  td.appendChild(input);
+  input.focus();
+  const save = () => {
+    setFieldValue(rec, fieldPath, input.value);
+    saveAndRefresh();
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+}
+
+function toggleDetailRow(idx) {
+  expandedRowIndex = expandedRowIndex === idx ? null : idx;
+  renderEndTrial();
+}
+
+function saveDetailFieldValue(idx, fieldPath, rawValue, isDecimal) {
+  const rec = state.strikeRecords[idx];
+  let val;
+  if (isDecimal) val = parseFloat(rawValue) || null;
+  else if (typeof getFieldValue(rec, fieldPath) === 'number') val = parseInt(rawValue) || 0;
+  else val = rawValue;
+  setFieldValue(rec, fieldPath, val);
+  autoSave();
+}
+
+function stepDetailField(idx, fieldPath, delta, min, max) {
+  const rec = state.strikeRecords[idx];
+  let val = (getFieldValue(rec, fieldPath) || 0) + delta;
+  if (val < min) val = min;
+  if (val > max) val = max;
+  setFieldValue(rec, fieldPath, val);
+
+  // Handle fragment number changes
+  if (fieldPath === 'ps.fragmentNumber') {
+    const ps = rec.postStrikeData;
+    while (ps.fragmentWeights.length > val) ps.fragmentWeights.pop();
+    while (ps.fragmentWeights.length < val) ps.fragmentWeights.push(0);
+    if (val > 0) ps.coreFragmentation = true;
+    if (val === 0) { ps.coreFragmentation = false; ps.fragmentWeights = []; }
+  }
+  saveAndRefresh();
+}
+
+function saveFragWeight(idx, fragIdx, rawValue) {
+  const rec = state.strikeRecords[idx];
+  const ps = rec.postStrikeData;
+  if (!ps.fragmentWeights) ps.fragmentWeights = [];
+  ps.fragmentWeights[fragIdx] = parseFloat(rawValue) || 0;
+  autoSave();
+}
+
+function setDetailSelect(idx, fieldPath, value) {
+  const rec = state.strikeRecords[idx];
+  setFieldValue(rec, fieldPath, value);
+  saveAndRefresh();
+}
+
+// ---- Build editable table ----
 function renderEndTrial() {
   if (state.strikeRecords.length === 0) return;
+
+  // Show/hide final measurements based on experiment completion
+  const finalSection = document.getElementById('endTrialFinalSection');
+  if (finalSection) finalSection.style.display = state.isTrialComplete ? '' : 'none';
+  const saveBtn = document.getElementById('endTrialSaveBtn');
+  if (saveBtn) saveBtn.style.display = state.isTrialComplete ? '' : 'none';
 
   const section = document.getElementById('endTrialTableSection');
   section.style.display = '';
   document.getElementById('endTrialTableHeader').textContent =
     `Strike Records (${state.strikeRecords.length} rows)`;
 
-  const table = document.getElementById('endTrialTable');
+  const wrapper = document.getElementById('endTrialTable');
+  const scrollLeft = wrapper.scrollLeft;
+
   let html = '<table class="data-table"><thead><tr>';
-  html += '<th>Strike</th><th>Platform</th><th>Quality</th><th>Location</th><th>Type</th>';
-  html += '<th>Pre</th><th>New</th><th>Rm Flk</th><th>Rm Frg</th>';
-  html += '<th>Blow</th><th>Core Wt</th><th>Frag?</th><th class="notes-col">Notes</th>';
+  html += '<th></th>';
+  html += '<th>Strike</th><th>Plat</th><th>Qual</th><th>Loc</th><th>Type</th>';
+  html += '<th>Pre</th><th>New</th><th>RmFlk</th><th>RmFrg</th>';
+  html += '<th>Blow</th><th>Core Wt</th><th>Frag?</th><th>HS Fail</th>';
+  html += '<th class="notes-col">Notes</th>';
   html += '</tr></thead><tbody>';
 
-  for (const r of state.strikeRecords) {
+  state.strikeRecords.forEach((r, idx) => {
     if (r.isUnviable) {
       html += `<tr class="unviable">`;
-      html += `<td>${r.strikeNumber}</td><td>${r.randomPlatform}</td>`;
-      for (let i = 0; i < 10; i++) html += '<td></td>';
-      html += `<td class="notes-col">Unviable</td></tr>`;
+      html += `<td></td>`;
+      html += `<td class="cell-readonly">${r.strikeNumber}</td>`;
+      html += `<td class="cell-readonly">${r.randomPlatform}</td>`;
+      for (let i = 0; i < 11; i++) html += '<td></td>';
+      html += `<td class="notes-col cell-editable" onclick="makeTextEditable(this,${idx},'ps.strikeNotes')">Unviable</td>`;
+      html += `</tr>`;
     } else {
       const ps = r.postStrikeData;
+      const expanded = expandedRowIndex === idx;
       html += `<tr>`;
-      html += `<td>${r.strikeNumber}</td><td>${r.randomPlatform}</td>`;
-      html += `<td>${r.platformQuality}</td><td>${r.platformLocation}</td><td>${r.platformType}</td>`;
-      html += `<td>${r.platformsPreBlow}</td><td>${r.platformsCreated}</td>`;
-      html += `<td>${r.platformsRemovedFlake}</td><td>${r.platformsRemovedFragment}</td>`;
-      html += `<td>${ps.blowSuccess}</td>`;
-      html += `<td>${ps.coreWeight != null ? ps.coreWeight.toFixed(1) : '-'}</td>`;
-      html += `<td>${ps.coreFragmentation ? 'Y' : 'N'}</td>`;
-      html += `<td class="notes-col">${ps.strikeNotes || ''}</td>`;
+      // Expand arrow
+      html += `<td class="expand-arrow" onclick="toggleDetailRow(${idx})">${expanded ? '▼' : '▶'}</td>`;
+      // Read-only
+      html += `<td class="cell-readonly">${r.strikeNumber}</td>`;
+      html += `<td class="cell-readonly">${r.randomPlatform}</td>`;
+      // Editable: Quality (cycle)
+      html += `<td class="cell-editable" onclick="handleCycleEdit(${idx},'platformQuality',QUALITY_CYCLE)">${r.platformQuality || '-'}</td>`;
+      // Editable: Location (select)
+      html += `<td class="cell-editable" onclick="makeSelectEditable(this,${idx},'platformLocation',LOCATION_OPTIONS)">${r.platformLocation ? r.platformLocation.replace('Position ','P') : '-'}</td>`;
+      // Editable: Type (select)
+      html += `<td class="cell-editable" onclick="makeSelectEditable(this,${idx},'platformType',TYPE_OPTIONS)">${r.platformType || '-'}</td>`;
+      // Read-only derived
+      html += `<td class="cell-readonly">${r.platformsPreBlow}</td>`;
+      html += `<td class="cell-readonly">${r.platformsCreated}</td>`;
+      html += `<td class="cell-readonly">${r.platformsRemovedFlake}</td>`;
+      html += `<td class="cell-readonly">${r.platformsRemovedFragment}</td>`;
+      // Editable: Blow Success (cycle)
+      html += `<td class="cell-editable" onclick="handleCycleEdit(${idx},'ps.blowSuccess',BLOW_CYCLE)">${ps.blowSuccess}</td>`;
+      // Editable: Core Weight (decimal)
+      html += `<td class="cell-editable" onclick="makeNumberEditable(this,${idx},'ps.coreWeight',true)">${ps.coreWeight != null ? ps.coreWeight.toFixed(1) : '-'}</td>`;
+      // Editable: Fragmentation (toggle)
+      html += `<td class="cell-editable" onclick="toggleBoolField(${idx},'ps.coreFragmentation')" style="color:${ps.coreFragmentation ? 'var(--green)' : 'var(--gray)'}">${ps.coreFragmentation ? 'Y' : 'N'}</td>`;
+      // Editable: HS Failure (cycle)
+      html += `<td class="cell-editable" onclick="handleCycleEdit(${idx},'ps.hammerstoneFailure',HAMMER_FAIL_OPTIONS.map(o=>o.value))">${ps.hammerstoneFailure || 'None'}</td>`;
+      // Editable: Notes (text)
+      html += `<td class="notes-col cell-editable" onclick="makeTextEditable(this,${idx},'ps.strikeNotes')">${ps.strikeNotes || ''}</td>`;
       html += `</tr>`;
+
+      // Detail row
+      if (expanded) {
+        html += buildDetailRow(r, idx);
+      }
     }
-  }
+  });
 
   html += '</tbody></table>';
-  table.innerHTML = html;
+  wrapper.innerHTML = html;
+  wrapper.scrollLeft = scrollLeft;
+}
+
+function buildDetailRow(r, idx) {
+  const ps = r.postStrikeData;
+  let html = `<tr class="detail-row"><td colspan="15"><div class="detail-panel">`;
+
+  // Group 1: Hammerstone
+  html += `<div class="detail-group">`;
+  html += `<div class="detail-group-header">Hammerstone</div>`;
+  html += `<div class="detail-field"><label>ID</label>`;
+  html += `<input type="text" value="${ps.hammerstoneID || ''}" onblur="saveDetailFieldValue(${idx},'ps.hammerstoneID',this.value,false)"></div>`;
+  html += `<div class="detail-field"><label>Failure</label>`;
+  html += `<div class="segmented mini">`;
+  ['None','Chipping','Failure'].forEach(v => {
+    html += `<button class="${ps.hammerstoneFailure===v?'active':''}" onclick="setDetailSelect(${idx},'ps.hammerstoneFailure','${v}')">${v}</button>`;
+  });
+  html += `</div></div>`;
+  html += `</div>`;
+
+  // Group 2: Edge Counts
+  html += `<div class="detail-group">`;
+  html += `<div class="detail-group-header">Platform Type Counts</div>`;
+  const edgeCounts = [
+    {label:'Unifacial Simple', field:'ps.unifacialSimpleCount'},
+    {label:'Unifacial Abrupt', field:'ps.unifacialAbruptCount'},
+    {label:'Bifacial Simple', field:'ps.bifacialSimpleCount'},
+    {label:'Bifacial Abrupt', field:'ps.bifacialAbruptCount'}
+  ];
+  edgeCounts.forEach(ec => {
+    const val = getFieldValue(r, ec.field) || 0;
+    html += `<div class="detail-field"><label>${ec.label}</label>`;
+    html += `<div class="stepper mini">`;
+    html += `<button onclick="stepDetailField(${idx},'${ec.field}',-1,0,99)">−</button>`;
+    html += `<span>${val}</span>`;
+    html += `<button onclick="stepDetailField(${idx},'${ec.field}',1,0,99)">+</button>`;
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+
+  // Group 3: Fragmentation
+  html += `<div class="detail-group">`;
+  html += `<div class="detail-group-header">Fragmentation</div>`;
+  html += `<div class="detail-field"><label>Core Fragmentation</label>`;
+  html += `<button class="btn btn-sm" style="padding:4px 10px;font-size:12px;width:auto;background:${ps.coreFragmentation?'var(--green)':'var(--lightgray)'};color:${ps.coreFragmentation?'white':'var(--text)'};" onclick="toggleBoolField(${idx},'ps.coreFragmentation')">${ps.coreFragmentation?'Yes':'No'}</button>`;
+  html += `</div>`;
+  html += `<div class="detail-field"><label>Fragment Number</label>`;
+  html += `<div class="stepper mini">`;
+  html += `<button onclick="stepDetailField(${idx},'ps.fragmentNumber',-1,0,5)">−</button>`;
+  html += `<span>${ps.fragmentNumber || 0}</span>`;
+  html += `<button onclick="stepDetailField(${idx},'ps.fragmentNumber',1,0,5)">+</button>`;
+  html += `</div></div>`;
+  const fw = ps.fragmentWeights || [];
+  for (let i = 0; i < (ps.fragmentNumber || 0); i++) {
+    html += `<div class="detail-field"><label>Fragment ${i+1} Wt (g)</label>`;
+    html += `<input type="number" step="0.01" value="${fw[i] || 0}" onblur="saveFragWeight(${idx},${i},this.value)"></div>`;
+  }
+  html += `</div>`;
+
+  // Group 4: Platform Statuses (read-only)
+  const statuses = r.platformStatuses || {};
+  const platIds = Object.keys(statuses).map(Number).sort((a,b)=>a-b);
+  if (platIds.length > 0) {
+    html += `<div class="detail-group">`;
+    html += `<div class="detail-group-header">Platform Statuses (read-only)</div>`;
+    html += `<div class="plat-badges">`;
+    platIds.forEach(id => {
+      const s = statuses[id];
+      let cls = 'plat-badge-gone';
+      let label = id;
+      if (s === 'A') cls = 'plat-badge-a';
+      else if (s === 'AX') { cls = 'plat-badge-ax'; label = id + ' ✕'; }
+      else if (s === 'AF') { cls = 'plat-badge-af'; label = id + ' ◆'; }
+      html += `<div class="plat-badge ${cls}">${label}</div>`;
+    });
+    html += `</div>`;
+    html += `<div style="margin-top:6px" class="helper-sm">A = available, ✕ = removed by flake, ◆ = removed by fragment</div>`;
+    html += `</div>`;
+  }
+
+  html += `</div></td></tr>`;
+  return html;
 }
 
 // ==================== CSV EXPORT ====================
