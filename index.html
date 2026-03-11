@@ -568,8 +568,8 @@
   <button class="tab-btn active" data-tab="trialDetails">Experiment Details</button>
   <button class="tab-btn" data-tab="platformSetup">Platform Setup</button>
   <button class="tab-btn" data-tab="randomPlatform">Random Platform</button>
-  <button class="tab-btn" data-tab="platformChanges">Platform Changes</button>
   <button class="tab-btn" data-tab="postStrike">Post-Strike</button>
+  <button class="tab-btn" data-tab="platformChanges">Platform Changes</button>
   <button class="tab-btn" data-tab="endTrial" id="endTrialTab" style="display:none">Records</button>
 </div>
 
@@ -708,8 +708,8 @@
     </button>
   </div>
 
-  <button class="btn btn-primary" id="goToPlatformChangesBtn" disabled onclick="goToTab('platformChanges')">
-    Go to Record Platform Changes →
+  <button class="btn btn-primary" id="goToPostStrikeBtn" disabled onclick="goToTab('postStrike')">
+    Go to Post-Strike Data →
   </button>
 
   <div id="undoSection" style="display:none;margin-top:12px;">
@@ -745,9 +745,14 @@
     </div>
   </div>
 
-  <button class="btn btn-primary" onclick="goToTab('postStrike')">
-    Continue to Post-Strike Data →
-  </button>
+  <div class="gap-12">
+    <button class="btn btn-primary" onclick="recordAndContinue()">
+      ↻ Record & Next Strike
+    </button>
+    <button class="btn btn-bordered" onclick="recordAndEndTrial()">
+      🏁 Record & End Experiment
+    </button>
+  </div>
 </div>
 
 <!-- ===== TAB 5: Post-Strike Data ===== -->
@@ -849,14 +854,9 @@
     <textarea id="strikeNotes" placeholder="Strike notes..."></textarea>
   </div>
 
-  <div class="gap-12">
-    <button class="btn btn-primary" onclick="recordAndContinue()">
-      ↻ Record & Next Strike
-    </button>
-    <button class="btn btn-bordered" onclick="recordAndEndTrial()">
-      🏁 Record & End Experiment
-    </button>
-  </div>
+  <button class="btn btn-primary" onclick="goToTab('platformChanges')">
+    Continue to Platform Changes →
+  </button>
 </div>
 
 <!-- ===== TAB 6: Records / End of Experiment ===== -->
@@ -1101,7 +1101,7 @@ function setQuality(val) {
 
 function renderRandomPlatform() {
   const display = document.getElementById('selectedPlatformDisplay');
-  const btn = document.getElementById('goToPlatformChangesBtn');
+  const btn = document.getElementById('goToPostStrikeBtn');
   const unviable = document.getElementById('unviableSection');
 
   if (state.selectedPlatform !== null) {
@@ -1447,8 +1447,8 @@ function undoLastStrike() {
     // If the undone record was an unviable mark, stay on Random Platform
     goToTab('randomPlatform');
   } else {
-    // Go to Platform Changes so user can re-do the platform changes
-    goToTab('platformChanges');
+    // Go to Post-Strike so user can re-do the post-strike data
+    goToTab('postStrike');
   }
 }
 
