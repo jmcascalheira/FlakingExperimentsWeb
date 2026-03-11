@@ -512,6 +512,29 @@
   .modal p { font-size: 14px; color: var(--secondary); margin-bottom: 16px; }
   .modal .btn { margin-top: 8px; }
 
+  /* Resume cards */
+  .resume-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    background: var(--card);
+  }
+  .resume-card-title {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+  .resume-card-detail {
+    font-size: 13px;
+    color: var(--secondary);
+    margin-bottom: 10px;
+  }
+  .resume-card-actions {
+    display: flex;
+    gap: 8px;
+  }
+
   /* Hide tab panels */
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
@@ -593,6 +616,13 @@
     <button class="btn btn-bordered btn-sm" onclick="pickSaveFolder()">
       📂 Choose Save Folder
     </button>
+  </div>
+
+  <!-- Resume previous experiment -->
+  <div class="section" id="resumeSection" style="display:none">
+    <div class="section-header">Resume Previous Experiment</div>
+    <div class="helper-sm mb-12">Saved experiments found in browser storage. Resume where you left off.</div>
+    <div id="resumeList"></div>
   </div>
 
   <button class="btn btn-primary" onclick="startTrial()">
@@ -1863,6 +1893,12 @@ function downloadCSV() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }, 500);
+
+  // Clear localStorage for this experiment after successful download
+  const key = `flaking_experiment_${state.trialNumber || 'unknown'}`;
+  localStorage.removeItem(key);
+  localStorage.removeItem(key + '_state');
+  renderResumeSection();
 }
 
 function shareCSV() {
@@ -1957,6 +1993,103 @@ function showAutoSaveIndicator(message) {
   setTimeout(() => ind.classList.remove('show'), 1500);
 }
 
+// ==================== RESUME EXPERIMENT ====================
+function getSavedExperiments() {
+  const experiments = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('flaking_experiment_') && key.endsWith('_state')) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(key));
+        const baseKey = key.replace('_state', '');
+        experiments.push({
+          key: baseKey,
+          trialNumber: saved.trialNumber || 'unknown',
+          date: saved.trialDate || '',
+          clastId: saved.clastNumberID || '',
+          strikeCount: (saved.strikeRecords || []).length,
+          isComplete: saved.isTrialComplete || false
+        });
+      } catch (e) { /* skip corrupt entries */ }
+    }
+  }
+  experiments.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  return experiments;
+}
+
+function renderResumeSection() {
+  const experiments = getSavedExperiments();
+  const section = document.getElementById('resumeSection');
+  const list = document.getElementById('resumeList');
+  if (experiments.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  list.innerHTML = experiments.map(exp => `
+    <div class="resume-card">
+      <div class="resume-card-title">Experiment ${exp.trialNumber}${exp.isComplete ? ' (completed)' : ''}</div>
+      <div class="resume-card-detail">
+        ${exp.date ? exp.date + ' · ' : ''}${exp.clastId ? 'Clast: ' + exp.clastId + ' · ' : ''}${exp.strikeCount} strike${exp.strikeCount !== 1 ? 's' : ''}
+      </div>
+      <div class="resume-card-actions">
+        <button class="btn btn-primary btn-sm" onclick="resumeExperiment('${exp.key}')">Resume</button>
+        <button class="btn btn-bordered btn-sm" onclick="deleteSavedExperiment('${exp.key}')">Delete Saved Data</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function resumeExperiment(key) {
+  const raw = localStorage.getItem(key + '_state');
+  if (!raw) { alert('Saved data not found.'); return; }
+  try {
+    const saved = JSON.parse(raw);
+    // Assign all saved properties to state
+    Object.keys(saved).forEach(k => {
+      if (k === 'removedPlatformIds') {
+        state.removedPlatformIds = new Set(saved[k]);
+      } else {
+        state[k] = saved[k];
+      }
+    });
+
+    // Repopulate DOM fields on Experiment Details tab
+    document.getElementById('trialNumber').value = state.trialNumber || '';
+    document.getElementById('trialDate').value = state.trialDate || '';
+    document.getElementById('clastNumberID').value = state.clastNumberID || '';
+    document.getElementById('clastSourceID').value = state.clastSourceID || '';
+    document.getElementById('clastWeight').value = state.clastWeight != null ? state.clastWeight : '';
+    document.getElementById('clastNotes').value = state.clastNotes || '';
+
+    // Show Records tab if there are strike records
+    if (state.strikeRecords.length > 0) {
+      document.getElementById('endTrialTab').style.display = '';
+    }
+
+    // Navigate to the appropriate tab
+    if (state.isTrialComplete) {
+      goToTab('endTrial');
+    } else {
+      goToTab('randomPlatform');
+    }
+
+    // Rebuild platform grid
+    renderPlatformSetup();
+
+    showAutoSaveIndicator('Experiment resumed');
+  } catch (e) {
+    alert('Failed to restore experiment: ' + e.message);
+  }
+}
+
+function deleteSavedExperiment(key) {
+  if (!confirm('Delete saved data for this experiment? This cannot be undone.')) return;
+  localStorage.removeItem(key);
+  localStorage.removeItem(key + '_state');
+  renderResumeSection();
+}
+
 // ==================== SERVICE WORKER ====================
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed:', err));
@@ -1969,6 +2102,7 @@ if (window.showDirectoryPicker) {
 }
 
 renderPlatformSetup();
+renderResumeSection();
 </script>
 </body>
 </html>
