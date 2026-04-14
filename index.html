@@ -436,6 +436,16 @@
   .stepper.mini { gap: 8px; }
   .stepper.mini button { width: 26px; height: 26px; font-size: 14px; }
   .stepper.mini span { font-size: 13px; min-width: 20px; }
+
+  /* Platform Type Counts grid */
+  .ptc-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .ptc-grid { width: 100%; border-collapse: collapse; }
+  .ptc-grid th { font-size: 11px; font-weight: 600; color: var(--secondary); padding: 6px 2px; text-align: center; }
+  .ptc-grid td { padding: 4px 2px; text-align: center; vertical-align: middle; }
+  .ptc-grid .ptc-row-label { text-align: left; font-size: 14px; padding-right: 8px; white-space: nowrap; }
+  .ptc-grid .stepper { gap: 4px; justify-content: center; }
+  .ptc-grid .stepper button { width: 26px; height: 26px; font-size: 14px; }
+  .ptc-grid .stepper span { font-size: 13px; min-width: 18px; }
   .segmented.mini button { padding: 4px 8px; font-size: 11px; }
 
   /* Platform status badges in detail row */
@@ -789,38 +799,7 @@
 
   <div class="section">
     <div class="section-header">Platform Type Counts</div>
-    <div class="form-row">
-      <label>Unifacial Simple</label>
-      <div class="stepper">
-        <button onclick="stepValue('unifacialSimple',-1)">−</button>
-        <span id="unifacialSimple">0</span>
-        <button onclick="stepValue('unifacialSimple',1)">+</button>
-      </div>
-    </div>
-    <div class="form-row">
-      <label>Unifacial Abrupt</label>
-      <div class="stepper">
-        <button onclick="stepValue('unifacialAbrupt',-1)">−</button>
-        <span id="unifacialAbrupt">0</span>
-        <button onclick="stepValue('unifacialAbrupt',1)">+</button>
-      </div>
-    </div>
-    <div class="form-row">
-      <label>Bifacial Simple</label>
-      <div class="stepper">
-        <button onclick="stepValue('bifacialSimple',-1)">−</button>
-        <span id="bifacialSimple">0</span>
-        <button onclick="stepValue('bifacialSimple',1)">+</button>
-      </div>
-    </div>
-    <div class="form-row">
-      <label>Bifacial Abrupt</label>
-      <div class="stepper">
-        <button onclick="stepValue('bifacialAbrupt',-1)">−</button>
-        <span id="bifacialAbrupt">0</span>
-        <button onclick="stepValue('bifacialAbrupt',1)">+</button>
-      </div>
-    </div>
+    <div id="platformTypeCountsGrid"></div>
   </div>
 
   <div class="section">
@@ -942,10 +921,7 @@ const state = {
   hammerstoneID: '',
   hammerstoneFailure: 'None',
   blowSuccess: 3,
-  unifacialSimple: 0,
-  unifacialAbrupt: 0,
-  bifacialSimple: 0,
-  bifacialAbrupt: 0,
+  platformTypeCounts: {},
   postCoreWeight: null,
   coreFragmentation: false,
   fragmentNumber: 0,
@@ -989,6 +965,53 @@ const HAMMER_FAIL_OPTIONS = [
 
 const QUALITY_CYCLE = ['', '1', '2', '3', '4', '5'];
 const BLOW_CYCLE = [0, 1, 2, 3, 4, 5];
+
+// Platform Type Counts grid definition
+const PTC_COLS = [
+  {key:'fragAsFrag', label:'Frag as Frag'},
+  {key:'fragAsFlake1', label:'Frag as Flake 1'},
+  {key:'fragAsFlake2', label:'Frag as Flake 2'},
+  {key:'fragAsFlake3', label:'Frag as Flake 3'},
+  {key:'fragAsFlake4', label:'Frag as Flake 4'}
+];
+const PTC_ROWS = [
+  {key:'UnifacialSimple', label:'Unifacial Simple'},
+  {key:'UnifacialAbrupt', label:'Unifacial Abrupt'},
+  {key:'BifacialSimple', label:'Bifacial Simple'},
+  {key:'BifacialAbrupt', label:'Bifacial Abrupt'}
+];
+
+function ptcKey(col, row) { return col.key + '_' + row.key; }
+
+function stepPTC(key, delta) {
+  let val = (state.platformTypeCounts[key] || 0) + delta;
+  if (val < 0) val = 0;
+  state.platformTypeCounts[key] = val;
+  const el = document.getElementById('ptc_' + key);
+  if (el) el.textContent = val;
+}
+
+function renderPlatformTypeCountsGrid() {
+  let html = '<div class="ptc-scroll"><table class="ptc-grid"><thead><tr><th></th>';
+  PTC_COLS.forEach(c => { html += `<th>${c.label}</th>`; });
+  html += '</tr></thead><tbody>';
+  PTC_ROWS.forEach(r => {
+    html += `<tr><td class="ptc-row-label">${r.label}</td>`;
+    PTC_COLS.forEach(c => {
+      const k = ptcKey(c, r);
+      const val = state.platformTypeCounts[k] || 0;
+      html += `<td><div class="stepper">`;
+      html += `<button onclick="stepPTC('${k}',-1)">−</button>`;
+      html += `<span id="ptc_${k}">${val}</span>`;
+      html += `<button onclick="stepPTC('${k}',1)">+</button>`;
+      html += `</div></td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  const el = document.getElementById('platformTypeCountsGrid');
+  if (el) el.innerHTML = html;
+}
 
 // ==================== TAB NAVIGATION ====================
 function goToTab(tabId) {
@@ -1252,10 +1275,7 @@ function defaultPostStrike() {
     hammerstoneID: '',
     hammerstoneFailure: 'None',
     blowSuccess: 3,
-    unifacialSimpleCount: 0,
-    unifacialAbruptCount: 0,
-    bifacialSimpleCount: 0,
-    bifacialAbruptCount: 0,
+    platformTypeCounts: {},
     coreWeight: null,
     coreFragmentation: false,
     fragmentNumber: 0,
@@ -1269,10 +1289,7 @@ function collectPostStrikeData() {
     hammerstoneID: document.getElementById('hammerstoneID').value,
     hammerstoneFailure: state.hammerstoneFailure,
     blowSuccess: state.blowSuccess,
-    unifacialSimpleCount: state.unifacialSimple,
-    unifacialAbruptCount: state.unifacialAbrupt,
-    bifacialSimpleCount: state.bifacialSimple,
-    bifacialAbruptCount: state.bifacialAbrupt,
+    platformTypeCounts: {...state.platformTypeCounts},
     coreWeight: parseFloat(document.getElementById('postCoreWeight').value) || null,
     coreFragmentation: state.coreFragmentation,
     fragmentNumber: state.fragmentNumber,
@@ -1392,10 +1409,7 @@ function resetForNewStrike() {
   state.newPlatformsPendingAdd = [];
   state.hammerstoneFailure = 'None';
   state.blowSuccess = 3;
-  state.unifacialSimple = 0;
-  state.unifacialAbrupt = 0;
-  state.bifacialSimple = 0;
-  state.bifacialAbrupt = 0;
+  state.platformTypeCounts = {};
   state.coreFragmentation = false;
   state.fragmentNumber = 0;
   state.strikeNotes = '';
@@ -1407,9 +1421,8 @@ function resetForNewStrike() {
   document.querySelectorAll('#qualityPicker button').forEach((b, i) => b.classList.toggle('active', i === 0));
   document.getElementById('locationPicker').value = '';
   document.getElementById('typePicker').value = '';
-  ['unifacialSimple', 'unifacialAbrupt', 'bifacialSimple', 'bifacialAbrupt', 'fragmentNumber'].forEach(f => {
-    document.getElementById(f).textContent = '0';
-  });
+  document.getElementById('fragmentNumber').textContent = '0';
+  renderPlatformTypeCountsGrid();
   document.getElementById('postCoreWeight').value = '';
   document.getElementById('coreFragToggle').checked = false;
   document.getElementById('fragFields').style.display = 'none';
@@ -1599,6 +1612,15 @@ function saveDetailFieldValue(idx, fieldPath, rawValue, isDecimal) {
   autoSave();
 }
 
+function stepDetailPTC(idx, key, delta) {
+  const rec = state.strikeRecords[idx];
+  const ptc = rec.postStrikeData.platformTypeCounts || (rec.postStrikeData.platformTypeCounts = {});
+  let val = (ptc[key] || 0) + delta;
+  if (val < 0) val = 0;
+  ptc[key] = val;
+  saveAndRefresh();
+}
+
 function stepDetailField(idx, fieldPath, delta, min, max) {
   const rec = state.strikeRecords[idx];
   let val = (getFieldValue(rec, fieldPath) || 0) + delta;
@@ -1642,6 +1664,19 @@ function cycleLastRecordPlatformStatus(platId) {
     state.platforms.filter(p => p.status !== 'A').map(p => p.id)
   );
 
+  saveAndRefresh();
+}
+
+function addPlatformFromRecords() {
+  const idx = state.strikeRecords.length - 1;
+  if (idx < 0) return;
+  const rec = state.strikeRecords[idx];
+  const statuses = rec.platformStatuses;
+  if (!statuses) return;
+  const newId = state.nextPlatformId;
+  statuses[newId] = 'A';
+  state.platforms.push({ id: newId, status: 'A' });
+  state.nextPlatformId++;
   saveAndRefresh();
 }
 
@@ -1747,24 +1782,27 @@ function buildDetailRow(r, idx) {
   html += `</div></div>`;
   html += `</div>`;
 
-  // Group 2: Edge Counts
+  // Group 2: Platform Type Counts grid
   html += `<div class="detail-group">`;
   html += `<div class="detail-group-header">Platform Type Counts</div>`;
-  const edgeCounts = [
-    {label:'Unifacial Simple', field:'ps.unifacialSimpleCount'},
-    {label:'Unifacial Abrupt', field:'ps.unifacialAbruptCount'},
-    {label:'Bifacial Simple', field:'ps.bifacialSimpleCount'},
-    {label:'Bifacial Abrupt', field:'ps.bifacialAbruptCount'}
-  ];
-  edgeCounts.forEach(ec => {
-    const val = getFieldValue(r, ec.field) || 0;
-    html += `<div class="detail-field"><label>${ec.label}</label>`;
-    html += `<div class="stepper mini">`;
-    html += `<button onclick="stepDetailField(${idx},'${ec.field}',-1,0,99)">−</button>`;
-    html += `<span>${val}</span>`;
-    html += `<button onclick="stepDetailField(${idx},'${ec.field}',1,0,99)">+</button>`;
-    html += `</div></div>`;
+  const ptcData = ps.platformTypeCounts || {};
+  html += `<div class="ptc-scroll"><table class="ptc-grid"><thead><tr><th></th>`;
+  PTC_COLS.forEach(c => { html += `<th>${c.label}</th>`; });
+  html += `</tr></thead><tbody>`;
+  PTC_ROWS.forEach(r => {
+    html += `<tr><td class="ptc-row-label">${r.label}</td>`;
+    PTC_COLS.forEach(c => {
+      const k = ptcKey(c, r);
+      const val = ptcData[k] || 0;
+      html += `<td><div class="stepper mini">`;
+      html += `<button onclick="stepDetailPTC(${idx},'${k}',-1)">−</button>`;
+      html += `<span>${val}</span>`;
+      html += `<button onclick="stepDetailPTC(${idx},'${k}',1)">+</button>`;
+      html += `</div></td>`;
+    });
+    html += `</tr>`;
   });
+  html += `</tbody></table></div>`;
   html += `</div>`;
 
   // Group 3: Fragmentation
@@ -1813,7 +1851,10 @@ function buildDetailRow(r, idx) {
     });
     html += `</div>`;
     if (isLastRecord) {
-      html += `<div style="margin-top:6px" class="helper-sm">Tap a platform to cycle: A → AX (✕) → AF (◆) → A. Changes apply to the next strike.</div>`;
+      html += `<div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">`;
+      html += `<button class="btn btn-sm" style="padding:4px 10px;font-size:12px;width:auto;background:var(--accent);color:white;" onclick="addPlatformFromRecords()">+ Add Platform</button>`;
+      html += `<span class="helper-sm" style="margin:0">Tap a platform to cycle: A → AX (✕) → AF (◆) → A</span>`;
+      html += `</div>`;
     } else {
       html += `<div style="margin-top:6px" class="helper-sm">A = available, ✕ = removed by flake, ◆ = removed by fragment</div>`;
     }
@@ -1845,7 +1886,7 @@ function buildCSV() {
   csv += 'Strike,RandomPlatform,Platform_Quality,Platform_Location,Platform_Type,';
   csv += 'Platforms_Pre_Blow,Platforms_Created,Platforms_Removed_Flake,Platforms_Removed_Fragment,';
   csv += 'Hammerstone_ID,Hammerstone_Failure,Blow_Success,';
-  csv += 'Unifacial_Simple,Unifacial_Abrupt,Bifacial_Simple,Bifacial_Abrupt,';
+  PTC_COLS.forEach(c => { PTC_ROWS.forEach(r => { csv += c.label.replace(/ /g,'_') + '_' + r.label.replace(/ /g,'_') + ','; }); });
   csv += 'Core_Weight_g,Core_Fragmentation,Fragment_Number,Fragment_1_Weight_g,Fragment_2_Weight_g,Fragment_3_Weight_g,Fragment_4_Weight_g,Fragment_5_Weight_g,';
   csv += 'Strike_Notes';
   sortedPlatIds.forEach(id => csv += `,Platform_${id}`);
@@ -1865,8 +1906,8 @@ function buildCSV() {
     csv += `${r.strikeNumber},${r.randomPlatform},`;
 
     if (r.isUnviable) {
-      // 22 empty columns + note
-      csv += ','.repeat(22);
+      // 38 empty columns + note
+      csv += ','.repeat(38);
       csv += esc(`Platform ${r.randomPlatform} unviable`);
       sortedPlatIds.forEach(() => csv += ',');
     } else {
@@ -1874,7 +1915,7 @@ function buildCSV() {
       csv += `${esc(r.platformQuality)},${esc(r.platformLocation)},${esc(r.platformType)},`;
       csv += `${r.platformsPreBlow},${r.platformsCreated},${r.platformsRemovedFlake},${r.platformsRemovedFragment},`;
       csv += `${esc(ps.hammerstoneID)},${esc(ps.hammerstoneFailure)},${ps.blowSuccess},`;
-      csv += `${ps.unifacialSimpleCount},${ps.unifacialAbruptCount},${ps.bifacialSimpleCount},${ps.bifacialAbruptCount},`;
+      PTC_COLS.forEach(c => { PTC_ROWS.forEach(r => { csv += (ps.platformTypeCounts[ptcKey(c,r)] || 0) + ','; }); });
       const fw = ps.fragmentWeights || [];
       csv += `${ps.coreWeight || 0},${ps.coreFragmentation},${ps.fragmentNumber || 0}`;
       for (let fi = 0; fi < 5; fi++) {
@@ -2135,6 +2176,7 @@ if (window.showDirectoryPicker) {
 }
 
 renderPlatformSetup();
+renderPlatformTypeCountsGrid();
 renderResumeSection();
 </script>
 </body>
