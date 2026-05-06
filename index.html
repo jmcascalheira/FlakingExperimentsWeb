@@ -465,6 +465,7 @@
   .plat-badge-ax { background: rgba(255,149,0,0.25); color: var(--secondary); }
   .plat-badge-af { background: rgba(255,59,48,0.25); color: var(--secondary); }
   .plat-badge-gone { background: rgba(0,0,0,0.03); color: var(--lightgray); }
+  .plat-badge-new { background: rgba(52,199,89,0.25); color: var(--text); border: 1px solid var(--green); }
 
   /* Helper text */
   .helper { font-size: 13px; color: var(--secondary); }
@@ -1083,14 +1084,46 @@ function removePlatform() {
   }
 }
 
+// One-shot migration: legacy records (from the prior fix) stored retroactive
+// adds in `platformsAddedFromRecords` AND in `platformStatuses` with status 'A'.
+// The new model uses `platformsCreatedThisBlow` only, with no status entry.
+// Returns true if any record was migrated.
+function migrateLegacyRecords() {
+  if (!Array.isArray(state.strikeRecords)) return false;
+  let changed = false;
+  state.strikeRecords.forEach(r => {
+    if (!r) return;
+    if (!Array.isArray(r.platformsAddedFromRecords) || r.platformsAddedFromRecords.length === 0) return;
+    if (!Array.isArray(r.platformsCreatedThisBlow)) r.platformsCreatedThisBlow = [];
+    r.platformsAddedFromRecords.forEach(id => {
+      if (!r.platformsCreatedThisBlow.includes(id)) r.platformsCreatedThisBlow.push(id);
+      if (r.platformStatuses && id in r.platformStatuses) delete r.platformStatuses[id];
+    });
+    delete r.platformsAddedFromRecords;
+    if (r.platformStatuses) {
+      r.platformsRemovedFlake = Object.values(r.platformStatuses).filter(s => s === 'AX').length;
+      r.platformsRemovedFragment = Object.values(r.platformStatuses).filter(s => s === 'AF').length;
+    }
+    changed = true;
+  });
+  return changed;
+}
+
 function recalcNextPlatformId() {
   const activeIds = state.platforms.map(p => p.id);
   const removedIds = [...state.removedPlatformIds];
   const recordIds = [];
   if (Array.isArray(state.strikeRecords)) {
     state.strikeRecords.forEach(r => {
-      if (r && r.platformStatuses) {
+      if (!r) return;
+      if (r.platformStatuses) {
         Object.keys(r.platformStatuses).forEach(k => recordIds.push(Number(k)));
+      }
+      if (Array.isArray(r.platformsCreatedThisBlow)) {
+        r.platformsCreatedThisBlow.forEach(id => recordIds.push(id));
+      }
+      if (Array.isArray(r.platformsAddedFromRecords)) {
+        r.platformsAddedFromRecords.forEach(id => recordIds.push(id));
       }
     });
   }
@@ -1384,6 +1417,7 @@ function recordStrike() {
     platformsRemovedFlake: rmFlake,
     platformsRemovedFragment: rmFrag,
     platformStatuses: { ...statusMap },
+    platformsCreatedThisBlow: [...state.newPlatformsPendingAdd],
     postStrikeData: collectPostStrikeData(),
     preStrikeSnapshot: snapshot
   };
@@ -1696,15 +1730,12 @@ function addPlatformFromRecords() {
   const idx = state.strikeRecords.length - 1;
   if (idx < 0) return;
   const rec = state.strikeRecords[idx];
-  const statuses = rec.platformStatuses;
-  if (!statuses) return;
   const newId = state.nextPlatformId;
-  statuses[newId] = 'A';
   state.platforms.push({ id: newId, status: 'A' });
   state.nextPlatformId++;
-  // Track adds so the "− Remove Last Added" button knows what's removable
-  if (!Array.isArray(rec.platformsAddedFromRecords)) rec.platformsAddedFromRecords = [];
-  rec.platformsAddedFromRecords.push(newId);
+  // Treat retroactive adds as "newly created during this blow" — green, not status-bearing
+  if (!Array.isArray(rec.platformsCreatedThisBlow)) rec.platformsCreatedThisBlow = [];
+  rec.platformsCreatedThisBlow.push(newId);
   // Bump the record's "New" count so the table headline reflects retroactive add
   rec.platformsCreated = (rec.platformsCreated || 0) + 1;
   saveAndRefresh();
@@ -1714,14 +1745,11 @@ function removeLastPlatformFromRecords() {
   const idx = state.strikeRecords.length - 1;
   if (idx < 0) return;
   const rec = state.strikeRecords[idx];
-  if (!Array.isArray(rec.platformsAddedFromRecords) || rec.platformsAddedFromRecords.length === 0) return;
-  const removeId = rec.platformsAddedFromRecords.pop();
-  if (rec.platformStatuses) delete rec.platformStatuses[removeId];
+  if (!Array.isArray(rec.platformsCreatedThisBlow) || rec.platformsCreatedThisBlow.length === 0) return;
+  const removeId = rec.platformsCreatedThisBlow.pop();
   state.platforms = state.platforms.filter(p => p.id !== removeId);
   state.removedPlatformIds.delete(removeId);
   rec.platformsCreated = Math.max(0, (rec.platformsCreated || 0) - 1);
-  rec.platformsRemovedFlake = Object.values(rec.platformStatuses || {}).filter(s => s === 'AX').length;
-  rec.platformsRemovedFragment = Object.values(rec.platformStatuses || {}).filter(s => s === 'AF').length;
   recalcNextPlatformId();
   saveAndRefresh();
 }
@@ -1872,7 +1900,15 @@ function buildDetailRow(r, idx) {
 
   // Group 4: Platform Statuses
   const statuses = r.platformStatuses || {};
-  const platIds = Object.keys(statuses).map(Number).sort((a,b)=>a-b);
+  // Newly created platforms during this blow are tracked separately; merge for display.
+  // Migration: legacy records used `platformsAddedFromRecords` and ALSO put those IDs in
+  // `platformStatuses` with status 'A'. Treat them as new-this-blow and skip their status.
+  const newThisBlow = (r.platformsCreatedThisBlow || []).concat(r.platformsAddedFromRecords || []);
+  const newSet = new Set(newThisBlow);
+  const allIds = new Set();
+  Object.keys(statuses).forEach(k => allIds.add(Number(k)));
+  newSet.forEach(id => allIds.add(id));
+  const platIds = [...allIds].sort((a,b)=>a-b);
   const isLastRecord = idx === state.strikeRecords.length - 1;
   if (platIds.length > 0) {
     html += `<div class="detail-group">`;
@@ -1883,13 +1919,18 @@ function buildDetailRow(r, idx) {
     }
     html += `<div class="plat-badges">`;
     platIds.forEach(id => {
+      const isNew = newSet.has(id);
       const s = statuses[id];
       let cls = 'plat-badge-gone';
       let label = id;
-      if (s === 'A') cls = 'plat-badge-a';
+      if (isNew) {
+        cls = 'plat-badge-new';
+      } else if (s === 'A') cls = 'plat-badge-a';
       else if (s === 'AX') { cls = 'plat-badge-ax'; label = id + ' ✕'; }
       else if (s === 'AF') { cls = 'plat-badge-af'; label = id + ' ◆'; }
-      const isInteractive = isLastRecord && (s === 'A' || s === 'AX' || s === 'AF');
+      // New (green) badges are not clickable — they can't be new AND removed.
+      // Greyed-out (status '') badges are read-only too.
+      const isInteractive = isLastRecord && !isNew && (s === 'A' || s === 'AX' || s === 'AF');
       if (isInteractive) {
         html += `<div class="plat-badge ${cls}" style="cursor:pointer;outline:2px dashed var(--accent);outline-offset:2px" onclick="cycleLastRecordPlatformStatus(${id})">${label}</div>`;
       } else {
@@ -1898,7 +1939,7 @@ function buildDetailRow(r, idx) {
     });
     html += `</div>`;
     if (isLastRecord) {
-      const canRemove = Array.isArray(r.platformsAddedFromRecords) && r.platformsAddedFromRecords.length > 0;
+      const canRemove = newThisBlow.length > 0;
       html += `<div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">`;
       html += `<button class="btn btn-sm" style="padding:4px 10px;font-size:12px;width:auto;background:var(--accent);color:white;" onclick="addPlatformFromRecords()">+ Add Platform</button>`;
       html += `<button class="btn btn-sm" style="padding:4px 10px;font-size:12px;width:auto;background:${canRemove ? 'var(--orange)' : 'var(--lightgray)'};color:${canRemove ? 'white' : 'var(--gray)'};" ${canRemove ? '' : 'disabled'} onclick="removeLastPlatformFromRecords()">− Remove Last Added</button>`;
@@ -1926,6 +1967,12 @@ function buildCSV() {
   const allPlatIds = new Set();
   state.strikeRecords.filter(r => !r.isUnviable).forEach(r => {
     Object.keys(r.platformStatuses).forEach(k => allPlatIds.add(parseInt(k)));
+    if (Array.isArray(r.platformsCreatedThisBlow)) {
+      r.platformsCreatedThisBlow.forEach(id => allPlatIds.add(id));
+    }
+    if (Array.isArray(r.platformsAddedFromRecords)) {
+      r.platformsAddedFromRecords.forEach(id => allPlatIds.add(id));
+    }
   });
   // Include any live platforms not yet in any record (added but not recorded yet)
   state.platforms.forEach(p => allPlatIds.add(p.id));
@@ -2179,8 +2226,10 @@ function resumeExperiment(key) {
       }
     });
 
-    // Self-heal: a saved file from before the cycle-rebuild fix may have a stale
-    // nextPlatformId. Recompute from current state + historical records.
+    // Self-heal: migrate legacy records (platformsAddedFromRecords -> platformsCreatedThisBlow),
+    // then recompute nextPlatformId. A saved file from before the cycle-rebuild fix may
+    // have a stale counter; this converges it.
+    migrateLegacyRecords();
     recalcNextPlatformId();
 
     // Repopulate DOM fields on Experiment Details tab
