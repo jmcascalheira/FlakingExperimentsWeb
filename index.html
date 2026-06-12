@@ -799,8 +799,13 @@
   </div>
 
   <div class="section">
-    <div class="section-header">Platform Type Counts</div>
+    <div class="section-header">Platform Type Counts All Scars</div>
     <div id="platformTypeCountsGrid"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">Platform Type Counts Active Edges</div>
+    <div id="platformTypeCountsNoPlatformGrid"></div>
   </div>
 
   <div class="section">
@@ -923,6 +928,7 @@ const state = {
   hammerstoneFailure: 'None',
   blowSuccess: 3,
   platformTypeCounts: {},
+  platformTypeCountsNoPlatform: {},
   postCoreWeight: null,
   coreFragmentation: false,
   fragmentNumber: 0,
@@ -984,15 +990,25 @@ const PTC_ROWS = [
 
 function ptcKey(col, row) { return col.key + '_' + row.key; }
 
-function stepPTC(key, delta) {
-  let val = (state.platformTypeCounts[key] || 0) + delta;
+function stepPTC(field, key, delta) {
+  if (!state[field]) state[field] = {};
+  let val = (state[field][key] || 0) + delta;
   if (val < 0) val = 0;
-  state.platformTypeCounts[key] = val;
-  const el = document.getElementById('ptc_' + key);
+  state[field][key] = val;
+  const prefix = field === 'platformTypeCounts' ? 'wp' : 'np';
+  const el = document.getElementById(`ptc_${prefix}_${key}`);
   if (el) el.textContent = val;
 }
 
 function renderPlatformTypeCountsGrid() {
+  renderPTCGrid('platformTypeCountsGrid', 'platformTypeCounts', 'wp');
+  renderPTCGrid('platformTypeCountsNoPlatformGrid', 'platformTypeCountsNoPlatform', 'np');
+}
+
+function renderPTCGrid(elId, field, idPrefix) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const data = state[field] || {};
   let html = '<div class="ptc-scroll"><table class="ptc-grid"><thead><tr><th></th>';
   PTC_COLS.forEach(c => { html += `<th>${c.label}</th>`; });
   html += '</tr></thead><tbody>';
@@ -1000,18 +1016,17 @@ function renderPlatformTypeCountsGrid() {
     html += `<tr><td class="ptc-row-label">${r.label}</td>`;
     PTC_COLS.forEach(c => {
       const k = ptcKey(c, r);
-      const val = state.platformTypeCounts[k] || 0;
+      const val = data[k] || 0;
       html += `<td><div class="stepper">`;
-      html += `<button onclick="stepPTC('${k}',-1)">−</button>`;
-      html += `<span id="ptc_${k}">${val}</span>`;
-      html += `<button onclick="stepPTC('${k}',1)">+</button>`;
+      html += `<button onclick="stepPTC('${field}','${k}',-1)">−</button>`;
+      html += `<span id="ptc_${idPrefix}_${k}">${val}</span>`;
+      html += `<button onclick="stepPTC('${field}','${k}',1)">+</button>`;
       html += `</div></td>`;
     });
     html += '</tr>';
   });
   html += '</tbody></table></div>';
-  const el = document.getElementById('platformTypeCountsGrid');
-  if (el) el.innerHTML = html;
+  el.innerHTML = html;
 }
 
 // ==================== TAB NAVIGATION ====================
@@ -1317,6 +1332,7 @@ function defaultPostStrike() {
     hammerstoneFailure: 'None',
     blowSuccess: 3,
     platformTypeCounts: {},
+    platformTypeCountsNoPlatform: {},
     coreWeight: null,
     coreFragmentation: false,
     fragmentNumber: 0,
@@ -1331,6 +1347,7 @@ function collectPostStrikeData() {
     hammerstoneFailure: state.hammerstoneFailure,
     blowSuccess: state.blowSuccess,
     platformTypeCounts: {...state.platformTypeCounts},
+    platformTypeCountsNoPlatform: {...state.platformTypeCountsNoPlatform},
     coreWeight: parseFloat(document.getElementById('postCoreWeight').value) || null,
     coreFragmentation: state.coreFragmentation,
     fragmentNumber: state.fragmentNumber,
@@ -1452,6 +1469,7 @@ function resetForNewStrike() {
   state.hammerstoneFailure = 'None';
   state.blowSuccess = 3;
   state.platformTypeCounts = {};
+  state.platformTypeCountsNoPlatform = {};
   state.coreFragmentation = false;
   state.fragmentNumber = 0;
   state.strikeNotes = '';
@@ -1654,13 +1672,34 @@ function saveDetailFieldValue(idx, fieldPath, rawValue, isDecimal) {
   autoSave();
 }
 
-function stepDetailPTC(idx, key, delta) {
+function stepDetailPTC(idx, field, key, delta) {
   const rec = state.strikeRecords[idx];
-  const ptc = rec.postStrikeData.platformTypeCounts || (rec.postStrikeData.platformTypeCounts = {});
+  const ptc = rec.postStrikeData[field] || (rec.postStrikeData[field] = {});
   let val = (ptc[key] || 0) + delta;
   if (val < 0) val = 0;
   ptc[key] = val;
   saveAndRefresh();
+}
+
+function buildDetailPTCGrid(idx, ptcData, field) {
+  let html = `<div class="ptc-scroll"><table class="ptc-grid"><thead><tr><th></th>`;
+  PTC_COLS.forEach(c => { html += `<th>${c.label}</th>`; });
+  html += `</tr></thead><tbody>`;
+  PTC_ROWS.forEach(r => {
+    html += `<tr><td class="ptc-row-label">${r.label}</td>`;
+    PTC_COLS.forEach(c => {
+      const k = ptcKey(c, r);
+      const val = ptcData[k] || 0;
+      html += `<td><div class="stepper mini">`;
+      html += `<button onclick="stepDetailPTC(${idx},'${field}','${k}',-1)">−</button>`;
+      html += `<span>${val}</span>`;
+      html += `<button onclick="stepDetailPTC(${idx},'${field}','${k}',1)">+</button>`;
+      html += `</div></td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table></div>`;
+  return html;
 }
 
 function stepDetailField(idx, fieldPath, delta, min, max) {
@@ -1856,27 +1895,16 @@ function buildDetailRow(r, idx) {
   html += `</div></div>`;
   html += `</div>`;
 
-  // Group 2: Platform Type Counts grid
+  // Group 2: Platform Type Counts All Scars
   html += `<div class="detail-group">`;
-  html += `<div class="detail-group-header">Platform Type Counts</div>`;
-  const ptcData = ps.platformTypeCounts || {};
-  html += `<div class="ptc-scroll"><table class="ptc-grid"><thead><tr><th></th>`;
-  PTC_COLS.forEach(c => { html += `<th>${c.label}</th>`; });
-  html += `</tr></thead><tbody>`;
-  PTC_ROWS.forEach(r => {
-    html += `<tr><td class="ptc-row-label">${r.label}</td>`;
-    PTC_COLS.forEach(c => {
-      const k = ptcKey(c, r);
-      const val = ptcData[k] || 0;
-      html += `<td><div class="stepper mini">`;
-      html += `<button onclick="stepDetailPTC(${idx},'${k}',-1)">−</button>`;
-      html += `<span>${val}</span>`;
-      html += `<button onclick="stepDetailPTC(${idx},'${k}',1)">+</button>`;
-      html += `</div></td>`;
-    });
-    html += `</tr>`;
-  });
-  html += `</tbody></table></div>`;
+  html += `<div class="detail-group-header">Platform Type Counts All Scars</div>`;
+  html += buildDetailPTCGrid(idx, ps.platformTypeCounts || {}, 'platformTypeCounts');
+  html += `</div>`;
+
+  // Group 2b: Platform Type Counts Active Edges
+  html += `<div class="detail-group">`;
+  html += `<div class="detail-group-header">Platform Type Counts Active Edges</div>`;
+  html += buildDetailPTCGrid(idx, ps.platformTypeCountsNoPlatform || {}, 'platformTypeCountsNoPlatform');
   html += `</div>`;
 
   // Group 3: Fragmentation
@@ -1985,6 +2013,7 @@ function buildCSV() {
   csv += 'Platforms_Pre_Blow,Platforms_Created,Platforms_Removed_Flake,Platforms_Removed_Fragment,';
   csv += 'Hammerstone_ID,Hammerstone_Failure,Blow_Success,';
   PTC_COLS.forEach(c => { PTC_ROWS.forEach(r => { csv += c.label.replace(/ /g,'_') + '_' + r.label.replace(/ /g,'_') + ','; }); });
+  PTC_COLS.forEach(c => { PTC_ROWS.forEach(r => { csv += 'ActiveEdges_' + c.label.replace(/ /g,'_') + '_' + r.label.replace(/ /g,'_') + ','; }); });
   csv += 'Core_Weight_g,Core_Fragmentation,Fragment_Number,Fragment_1_Weight_g,Fragment_2_Weight_g,Fragment_3_Weight_g,Fragment_4_Weight_g,Fragment_5_Weight_g,';
   csv += 'Strike_Notes';
   sortedPlatIds.forEach(id => csv += `,Platform_${id}`);
@@ -2004,8 +2033,8 @@ function buildCSV() {
     csv += `${r.strikeNumber},${r.randomPlatform},`;
 
     if (r.isUnviable) {
-      // 38 empty columns + note
-      csv += ','.repeat(38);
+      // 58 empty columns + note (38 original + 20 for the second PTC grid)
+      csv += ','.repeat(58);
       csv += esc(`Platform ${r.randomPlatform} unviable`);
       sortedPlatIds.forEach(() => csv += ',');
     } else {
@@ -2014,6 +2043,7 @@ function buildCSV() {
       csv += `${r.platformsPreBlow},${r.platformsCreated},${r.platformsRemovedFlake},${r.platformsRemovedFragment},`;
       csv += `${esc(ps.hammerstoneID)},${esc(ps.hammerstoneFailure)},${ps.blowSuccess},`;
       PTC_COLS.forEach(c => { PTC_ROWS.forEach(r => { csv += (ps.platformTypeCounts[ptcKey(c,r)] || 0) + ','; }); });
+      PTC_COLS.forEach(c => { PTC_ROWS.forEach(r => { csv += ((ps.platformTypeCountsNoPlatform || {})[ptcKey(c,r)] || 0) + ','; }); });
       const fw = ps.fragmentWeights || [];
       csv += `${ps.coreWeight || 0},${ps.coreFragmentation},${ps.fragmentNumber || 0}`;
       for (let fi = 0; fi < 5; fi++) {
